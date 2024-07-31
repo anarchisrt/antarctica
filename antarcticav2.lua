@@ -7,12 +7,6 @@
 cvar.cl_foot_contact_shadows:set_int(0)
 cvar.sv_airaccelerate:set_int(100)
 
-local C = function (t) local c = {} if type(t) ~= "table" then return t end for k, v in next, t do c[k] = v end return c end
-
-local table, math, string = C(table), C(math), C(string)
-local ui, client, database, entity, ffi, globals, panorama, renderer
-= C(ui), C(client), C(database), C(entity), C(require "ffi"), C(globals), C(panorama), C(renderer)
-
 local render = renderer
 local events = client
 
