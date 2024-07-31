@@ -7,6 +7,7 @@
 cvar.cl_foot_contact_shadows:set_int(0)
 cvar.sv_airaccelerate:set_int(100)
 
+
 local render = renderer
 local events = client
 
@@ -1122,6 +1123,7 @@ do
 					yaw_value = 0
 					yawmodofs = 0
 					yaw_base = 'local view'
+					desync = 'opposite'
 				elseif desync == 'Process' then
 					local chokedcommands = globals.chokedcommands()
 					local delay = body_yaw_delay
