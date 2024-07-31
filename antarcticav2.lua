@@ -1118,12 +1118,6 @@ do
 					yawmodofs = 0
 					yaw_base = 'local view'
 					desync = 'opposite'
-				elseif ui.get(software.antiaim.angles.freestanding[2]) and ui.get(software.antiaim.angles.freestanding[1]) and ctx.state == 'Moving' then
-					yaw = '180'
-					yaw_value = 0
-					yawmodofs = 0
-					yaw_base = 'local view'
-					desync = 'opposite'
 				elseif desync == 'Process' then
 					local chokedcommands = globals.chokedcommands()
 					local delay = body_yaw_delay
