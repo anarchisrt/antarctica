@@ -239,6 +239,8 @@ end
 
 do
 	function gui.init()
+		gui.anim = {}
+		gui.anim.builder = {}
 		gui.menu = {}
 		gui.aa = 'aa'
 		gui.aaim = 'anti-aimbot angles'
@@ -255,10 +257,25 @@ do
 		gui.menu.lua = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Antarctica' ..gui.color..' Recode', 'Antiaim', 'Visuals', 'Misc')--⛧
 		gui.menu.miscellaneous = ui.new_combobox(gui.aa, gui.lag, '\n', 'Main', 'Other')
 
-		gui.menu.airflow = ui.new_combobox(gui.aa, gui.lag, gui.risk..'Air flow', 'Off', 'Walking', 'Static', 'Bsod')
-		gui.menu.airfl = ui.new_checkbox(gui.aa, gui.lag, gui.risk..'Air flash')
-		gui.menu.grflow = ui.new_combobox(gui.aa, gui.lag, gui.risk..'Ground flow', 'Off', 'Walking', 'Static', 'Bsod')
-		gui.menu.grfl = ui.new_checkbox(gui.aa, gui.lag, gui.risk..'Ground flash')
+		gui.anim.builderanim = {'off', '1', '.5', '.0', 'bsod'}
+		gui.anim.anm = {'Move lean', 'Run in air', 'Line run', 'Static legs in air', 'Static legs on ground', 'Model scale'}
+		gui.anim.animbreaker = ui.new_combobox(gui.aa, gui.abcd, gui.risk..'Animations', 'Move lean', 'Run in air', 'Line run', 'Static legs in air', 'Static legs on ground', 'Model scale')
+
+		ui.set_callback(gui.anim.animbreaker, function()
+			cvar.play:invoke_callback(lua.sound)
+		end, true)
+
+		for i, name in pairs(gui.anim.anm) do
+			gui.anim.builder[name] = {
+				pose_layer = ui.new_combobox(gui.aa, gui.abcd, gui.risk..'Settings '..name, gui.anim.builderanim),
+				bsod1 = ui.new_slider(gui.aa,gui.abcd, gui.risk..'Bsod start '..name, .0, 10, .1, true, nil, .1),
+				bsod2 = ui.new_slider(gui.aa,gui.abcd, gui.risk..'Bsod end '..name, .0, 10, .1, true, nil, .1),
+			}
+			ui.set_callback(gui.anim.builder[name].pose_layer, function()
+				cvar.play:invoke_callback(lua.sound)
+			end, true)
+		end
+		gui.menu.grfl = ui.new_checkbox(gui.aa, gui.abcd, gui.risk..'Flashed')
 
 		gui.menu.outputlogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Output logs')
 		gui.menu.cenlogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Center logs')
@@ -301,18 +318,6 @@ do
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 		ui.set_callback(gui.menu.reglogs, function()
-			cvar.play:invoke_callback(lua.sound)
-		end, true)
-		ui.set_callback(gui.menu.airflow, function()
-			cvar.play:invoke_callback(lua.sound)
-		end, true)
-		ui.set_callback(gui.menu.nadelogs, function()
-			cvar.play:invoke_callback(lua.sound)
-		end, true)
-		ui.set_callback(gui.menu.airfl, function()
-			cvar.play:invoke_callback(lua.sound)
-		end, true)
-		ui.set_callback(gui.menu.grflow, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 		ui.set_callback(gui.menu.grfl, function()
@@ -377,42 +382,113 @@ do
 				if player_ptr == nullptr then
 					return
 				end
+
+				local first_velocity, second_velocity = entity.get_prop(g_ctx.lp, 'm_vecVelocity')
+				local speed = math.floor(math.sqrt(first_velocity*first_velocity+second_velocity*second_velocity))
 	
-				local airfl = ui.get(gui.menu.airflow)
-				local airfla = ui.get(gui.menu.airfl)
-				local grfl = ui.get(gui.menu.grflow)
-				local grfla = ui.get(gui.menu.grfl)
+				local a12 = ui.get(gui.anim.builder['Move lean'].pose_layer)
+				local a6 = ui.get(gui.anim.builder['Run in air'].pose_layer)
+				local p7 = ui.get(gui.anim.builder['Line run'].pose_layer)
+				local p6 = ui.get(gui.anim.builder['Static legs in air'].pose_layer)
+				local p0 = ui.get(gui.anim.builder['Static legs on ground'].pose_layer)
+				local mdscl = ui.get(gui.anim.builder['Model scale'].pose_layer)
+				local bsdstrt12 = ui.get(gui.anim.builder['Move lean'].bsod1) * .1
+				local bsdnd12 = ui.get(gui.anim.builder['Move lean'].bsod2) * .1
+				local bsdstrt6 = ui.get(gui.anim.builder['Run in air'].bsod1) * .1
+				local bsdnd6 = ui.get(gui.anim.builder['Run in air'].bsod2) * .1
+				local bsdstrt7 = ui.get(gui.anim.builder['Line run'].bsod1) * .1
+				local bsdnd7 = ui.get(gui.anim.builder['Line run'].bsod2) * .1
+				local sbsdstrt = ui.get(gui.anim.builder['Static legs in air'].bsod1) * .1
+				local sbsdnd = ui.get(gui.anim.builder['Static legs in air'].bsod2) * .1
+				local bsdstrt0 = ui.get(gui.anim.builder['Static legs on ground'].bsod1) * .1
+				local bsdnd0 = ui.get(gui.anim.builder['Static legs on ground'].bsod2) * .1
+				local models = ui.get(gui.anim.builder['Model scale'].bsod1) * .1
+				local modelsc = ui.get(gui.anim.builder['Model scale'].bsod2) * .1
 	
-				local realtime6 = globals.realtime() / 2.5 % 1
+				local realtime12 = globals.realtime() / 2 % 1
+				local nolag12 = realtime12
+	
+				local realtime6 = globals.realtime() / 2 % 1
 				local nolag6 = realtime6
-			
 				local anim_layers = ffi.cast(animation_layer_t, ffi.cast(char_ptr, player_ptr) + 0x2990)[0]
-		
-				if g_ctx.grtck then
-					if grfla then
-						anim_layers[0]['sequence'] = 227
+	
+				if speed > 5 then
+					if a12 == '1' then
+						anim_layers[12]['weight'] = 1
+						anim_layers[12]['cycle'] = nolag12
+					elseif a12 == '.5' then
+						anim_layers[12]['weight'] = .5
+						anim_layers[12]['cycle'] = nolag12
+					elseif a12 == '.0' then
+						anim_layers[12]['weight'] = .0
+						anim_layers[12]['cycle'] = nolag12
+					elseif a12 == 'bsod' then
+						anim_layers[12]['weight'] = events.random_float(bsdstrt12, bsdnd12)
+						anim_layers[12]['cycle'] = nolag12
 					end
-					if grfl == 'Walking' then
+			
+					if not g_ctx.grtck then
+						if a6 == '1' then
+							anim_layers[6]['weight'] = 1
+							anim_layers[6]['cycle'] = nolag6
+						elseif a6 == '.5' then
+							anim_layers[6]['weight'] = .5
+							anim_layers[6]['cycle'] = nolag6
+						elseif a6 == '.0' then
+							anim_layers[6]['weight'] = .0
+							anim_layers[6]['cycle'] = nolag6
+						elseif a6 == 'bsod' then
+							anim_layers[6]['weight'] = events.random_float(bsdstrt6, bsdnd6)
+							anim_layers[6]['cycle'] = nolag6
+						end
+					end
+			
+					if p7 == '1' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 7)
-					elseif grfl == 'Static' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 0)
-					elseif grfl == 'Bsod' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(0.0, 1.0), 0)
+					elseif p7 == '.5' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 7)
+					elseif p7 == '.0' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 7)
+					elseif p7 == 'bsod' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt7, bsdnd7), 7)
 					end
-				else
-					if airfla then
-						anim_layers[0]['sequence'] = 227
-					end
-					if airfl == 'Walking' then
-						anim_layers[6]['weight'] = 1
-						anim_layers[6]['cycle'] = nolag6
-					elseif airfl == 'Static' then
+			
+					if p6 == '1' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 6)
-					elseif airfl == 'Bsod' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(0.0, 1.0), 6)
+					elseif p6 == '.5' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 6)
+					elseif p6 == '.0' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 6)
+					elseif p6 == 'bsod' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(sbsdstrt, sbsdnd), 6)
+					end
+
+					if p0 == '1' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 0)
+					elseif p0 == '.5' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 0)
+					elseif p0 == '.0' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 0)
+					elseif p0 == 'bsod' then
+						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt0, bsdnd0), 0)
 					end
 				end
 	
+				if mdscl == '1' then
+					entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
+				elseif mdscl == '.5' then
+					entity.set_prop(g_ctx.lp, 'm_flModelScale', .5)
+				elseif mdscl == '.0' then
+					entity.set_prop(g_ctx.lp, 'm_flModelScale', .0)
+				elseif mdscl == 'bsod' then
+					entity.set_prop(g_ctx.lp, 'm_flModelScale', events.random_float(models, modelsc))
+				else
+					entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
+				end
+
+				if ui.get(gui.menu.grfl) then
+					anim_layers[0]['sequence'] = 227
+				end
 			end,
 			hex_label = function(self, rgb)
 				local hexadecimal= '\a'
@@ -504,10 +580,16 @@ do
 			ui.set_visible(gui.fov, luatabvis)
 			ui.set_visible(gui.zoom, luatabvis)
 			ui.set_visible(gui.zoom_on, luatabvis)
-			ui.set_visible(gui.menu.airfl, luatabmisc)
-			ui.set_visible(gui.menu.airflow, luatabmisc)
-			ui.set_visible(gui.menu.grflow, luatabmisc)
 			ui.set_visible(gui.menu.grfl, luatabmisc)
+
+			ui.set_visible(gui.anim.animbreaker, luatabmisc)
+			for i, name in pairs(gui.anim.anm) do
+				local opened = name == ui.get(gui.anim.animbreaker)
+				local bsod = ui.get(gui.anim.builder[name].pose_layer) == 'bsod'
+				ui.set_visible(gui.anim.builder[name].pose_layer, opened and luatabmisc)
+				ui.set_visible(gui.anim.builder[name].bsod1, opened and luatabmisc and bsod)
+				ui.set_visible(gui.anim.builder[name].bsod2, opened and luatabmisc and bsod)
+			end
 
 			ui.set(software.visuals.effects.output, false)
 			ui.set_enabled(software.visuals.effects.output, false)
@@ -1034,11 +1116,13 @@ do
 					yaw_value = -90
 					yawmodofs = 0
 					yaw_base = 'local view'
+					desync = 'opposite'
 				elseif g_ctx.selected_manual == 2 then
 					yaw = '180'
 					yaw_value = 90
 					yawmodofs = 0
 					yaw_base = 'local view'
+					desync = 'opposite'
 				elseif ui.get(software.antiaim.angles.freestanding[2]) and ui.get(software.antiaim.angles.freestanding[1]) and ctx.state == 'Moving' then
 					yaw = '180'
 					yaw_value = 0
@@ -1353,7 +1437,7 @@ do
 		gui.indicators.damage_indicator = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Damage indicator')
 		gui.indicators.damage_indicator_color = ui.new_color_picker(gui.aa,gui.aaim,'Damage indicator color', 215, 215, 215)
 		gui.indicators.damage_indicator_font = ui.new_combobox(gui.aa, gui.aaim, '\n Damage font', 'Small', 'Default', 'Bold')
-		gui.indicators.watermark_style = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Watermark style', 'From gamesense', 'From neverlose')
+		gui.indicators.watermark_style = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Watermark style', 'Old', 'New')
 		gui.indicators.wmaincolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark main color', 215, 215, 215)
 		gui.indicators.wbackcolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark back color', 111, 111, 215)
 		gui.indicators.watermark_font = ui.new_combobox(gui.aa, gui.lag, '\n Watermark font', 'Small', 'Default', 'Bold')
@@ -1420,6 +1504,7 @@ do
 		ctx.crosshair_indicator.y = ctx.crosshair_indicator.y + ui.get(gui.indicators.indicator_slider) * alpha
 	end
 
+	local debuy = 10
 	def.visuals = {
 		interlerpfuncs = function()
 			backup.visual = {}
@@ -1541,7 +1626,7 @@ do
 			elseif ui.get(gui.indicators.watermark_font) == 'Bold' then
 				opt = 'b'
 			end
-			if ui.get(gui.indicators.watermark_style) == 'From neverlose' then
+			if ui.get(gui.indicators.watermark_style) == 'New' then
 				local r, g, b, a = ui.get(gui.indicators.wmaincolor)
 				local name = 'antarctica recode'
 				local text_size = render.measure_text(opt, name:upper())
@@ -1699,7 +1784,7 @@ do
 	
 		local group = hitgroup_names[e.hitgroup + 1] or '?'
 		motion.push(string.format('Registered %s in %s for %d damage in %d hitchance and%2d backtrack (%s)', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), toticks(e.backtrack), table.concat(flags)), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-		client.color_log(215, 215, 215, string.format(gui.menuc..'Registered ' .. gui.regcol .. ' %s ' .. gui.menuc.. ' in %s for %d damage in %d hitchance and%2d backtrack (%s)', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), toticks(e.backtrack), table.concat(flags)))
+		client.log(string.format('Registered %s in %s for %d damage in %d hitchance and%2d backtrack (%s)', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), toticks(e.backtrack), table.concat(flags)))
 	end)
 
 	events.set_event_callback('aim_hit', function(e)
@@ -1758,6 +1843,7 @@ do
 		ui.set(software.rage.binds.usercmd, 16)
 		cvar.cam_idealdist:set_float(ui.get(gui.thirdperson))
 		cvar.r_aspectratio:set_float(0.0)
+		ui.set(software.visuals.effects.fov, ui.get(gui.fov))
 	end
 end
 
