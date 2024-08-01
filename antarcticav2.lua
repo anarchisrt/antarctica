@@ -249,7 +249,6 @@ do
 		gui.menuc = def.gui:hex_label({215, 215, 215, 215})
 		--9FCA2BFF
 		
-		gui.menu.luac = ui.new_label(gui.aa,gui.lag, gui.color..'Loader, Release v2 - ' .. lua.user)
 		gui.menu.lua = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Antarctica' ..gui.color..' Recode', 'Antiaim', 'Visuals', 'Misc')--⛧
 		gui.menu.miscellaneous = ui.new_combobox(gui.aa, gui.lag, '\n', 'Main', 'Other')
 
@@ -272,6 +271,8 @@ do
 			end, true)
 		end
 		gui.menu.grfl = ui.new_checkbox(gui.aa, gui.abcd, gui.risk..'Flashed')
+
+		gui.menu.fixdt = ui.new_checkbox(gui.aa, gui.lag, gui.risk..'Doubletap teleport with enemy fix')
 
 		gui.menu.outputlogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Output logs')
 		gui.menu.cenlogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Center logs')
@@ -323,6 +324,9 @@ do
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 		ui.set_callback(gui.zoom_on, function()
+			cvar.play:invoke_callback(lua.sound)
+		end, true)
+		ui.set_callback(gui.menu.fixdt, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 	end
@@ -509,9 +513,9 @@ do
 				
 				return hexadecimal
 			end,
-			text = function(color1, color11, color111, color1111, color2, color22, color222, color2222, text, speed)
-				local r1, g1, b1, a1 = color1, color11, color111, color1111
-				local r2, g2, b2, a2 = color2, color22, color222, color2222
+			text = function(color_start, color_end, text, speed)
+				local r1, g1, b1, a1 = ui.get(color_start)
+				local r2, g2, b2, a2 = ui.get(color_end)
 				local highlight_fraction =  (globals.realtime() / 2 % 1.2 * speed) - 1.2
 				local output = ''
 				for idx = 1, #text do
@@ -539,26 +543,27 @@ do
 		end
 
 		function gui.render()
+			local indicators = gui.indicators
 			local luatabaa = ui.get(gui.menu.lua) == 'Antiaim'
 			local luatabvis = ui.get(gui.menu.lua) == 'Visuals'
 			local luatabmisc = ui.get(gui.menu.lua) == 'Misc'
-			local indsd = ui.get(gui.indicators.indicator)
-			local dmgind = ui.get(gui.indicators.damage_indicator)
+			local indsd = ui.get(indicators.indicator)
+			local dmgind = ui.get(indicators.damage_indicator)
 			ui.set_visible(gui.menu.miscellaneous, luatabaa)
-			ui.set_visible(gui.indicators.manual2arrows, luatabvis)
-			ui.set_visible(gui.indicators.maincolor, luatabvis)
-			ui.set_visible(gui.indicators.backcolor, luatabvis)
-			ui.set_visible(gui.indicators.wmaincolor, luatabvis)
-			ui.set_visible(gui.indicators.wbackcolor, luatabvis)
-			ui.set_visible(gui.indicators.indicator, luatabvis)
-			ui.set_visible(gui.indicators.indicator_color, luatabvis and indsd)
-			ui.set_visible(gui.indicators.indicator_font, luatabvis and indsd)
-			ui.set_visible(gui.indicators.indicator_slider, luatabvis and indsd)
-			ui.set_visible(gui.indicators.damage_indicator, luatabvis)
-			ui.set_visible(gui.indicators.damage_indicator_color, luatabvis and dmgind)
-			ui.set_visible(gui.indicators.damage_indicator_font, luatabvis and dmgind)
-			ui.set_visible(gui.indicators.watermark_style, luatabvis)
-			ui.set_visible(gui.indicators.watermark_font, luatabvis)
+			ui.set_visible(indicators.manual2arrows, luatabvis)
+			ui.set_visible(indicators.maincolor, luatabvis)
+			ui.set_visible(indicators.backcolor, luatabvis)
+			ui.set_visible(indicators.wmaincolor, luatabvis)
+			ui.set_visible(indicators.wbackcolor, luatabvis)
+			ui.set_visible(indicators.indicator, luatabvis)
+			ui.set_visible(indicators.indicator_color, luatabvis and indsd)
+			ui.set_visible(indicators.indicator_font, luatabvis and indsd)
+			ui.set_visible(indicators.indicator_slider, luatabvis and indsd)
+			ui.set_visible(indicators.damage_indicator, luatabvis)
+			ui.set_visible(indicators.damage_indicator_color, luatabvis and dmgind)
+			ui.set_visible(indicators.damage_indicator_font, luatabvis and dmgind)
+			ui.set_visible(indicators.watermark_style, luatabvis)
+			ui.set_visible(indicators.watermark_font, luatabvis)
 			ui.set_visible(gui.thirdperson, luatabvis)
 			ui.set_visible(gui.thirdperson_on, luatabvis)
 			ui.set_visible(gui.menu.hitlogs, luatabmisc)
@@ -577,6 +582,7 @@ do
 			ui.set_visible(gui.zoom, luatabvis)
 			ui.set_visible(gui.zoom_on, luatabvis)
 			ui.set_visible(gui.menu.grfl, luatabmisc)
+			ui.set_visible(gui.menu.fixdt, luatabmisc)
 
 			ui.set_visible(gui.anim.animbreaker, luatabmisc)
 			for i, name in pairs(gui.anim.anm) do
@@ -616,7 +622,7 @@ do
 	def.values = {
 		cmd = 0,
 		flags = 0,
-        packets = 0,
+		packets = 0,
 		body = 0,
 		choking = 0,
 		spin = 0,
@@ -630,35 +636,35 @@ do
 			def.values.choking_bool = false
 		end,
 		predict = function(cmd)
-			local tickbase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
+			local tickbase = entity.get_prop(g_ctx.lp, 'm_nTickBase') or 0
 			
 			if math.abs(tickbase - def.values.max_tickbase) > 64 then
 				def.values.max_tickbase = 0
 			end
-		
+		  
 			if tickbase > def.values.max_tickbase then
 				def.values.max_tickbase = tickbase
 			elseif def.values.max_tickbase > tickbase then
 				def.values.ticks = math.min(14, math.max(0, def.values.max_tickbase - tickbase - 1))
 			end
-
+	
 			return def.values.ticks
 		end,
 		net = function(cmd)
 			if g_ctx.lp == nil then return end
 			local my_data = entitys(g_ctx.lp)
-            if my_data == nil then return end
-
-            local animstate = entitys.get_anim_state(my_data)
-            if animstate == nil then return end
-
+			if my_data == nil then return end
+	
+			local animstate = entitys.get_anim_state(my_data)
+			if animstate == nil then return end
+	
 			local chokedcommands = globals.chokedcommands()
-            if chokedcommands == 0 then
-                def.values.packets = def.values.packets + 1
-                def.values.choking = def.values.choking * -1
-                def.values.choking_bool = not def.values.choking_bool
+			if chokedcommands == 0 then
+				def.values.packets = def.values.packets + 1
+				def.values.choking = def.values.choking * -1
+				def.values.choking_bool = not def.values.choking_bool
 				def.values.body = body(animstate)
-            end
+			end
 		end
 	}
 end
@@ -744,34 +750,35 @@ do
 				defensive_end = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod end'..gui.state, 7, 14, 14, true, 't', 1, ctx.tick2),
 			}
 
-			ui.set_callback(gui.conditions[name].override, function()
+			local conditions = gui.conditions[name]
+			ui.set_callback(conditions.override, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].yaw_base, function()
+			ui.set_callback(conditions.yaw_base, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].yaw, function()
+			ui.set_callback(conditions.yaw, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].yaw_modifier, function()
+			ui.set_callback(conditions.yaw_modifier, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].lr_yaw, function()
+			ui.set_callback(conditions.lr_yaw, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].desync, function()
+			ui.set_callback(conditions.desync, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].roll, function()
+			ui.set_callback(conditions.roll, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].defensive_on, function()
+			ui.set_callback(conditions.defensive_on, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].defensive_builder, function()
+			ui.set_callback(conditions.defensive_builder, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
-			ui.set_callback(gui.conditions[name].defensive_yaw, function()
+			ui.set_callback(conditions.defensive_yaw, function()
 				cvar.play:invoke_callback(lua.sound)
 			end, true)
 		end
@@ -800,40 +807,41 @@ do
 		ui.set_visible(gui.spinwhendead, luatabaaot)
 
 		for i, name in pairs(ctx.condition_names) do
+			local conditions = gui.conditions[name]
 			local enabled = name == selected_state
 
-			local ok = ui.get(gui.conditions[name].desync) ~= 'Off'
-			local ik2 = ui.get(gui.conditions[name].defensive_builder)
-			ui.set_visible(gui.conditions[name].override, enabled and i > 1 and luatabaa)
+			local ok = ui.get(conditions.desync) ~= 'Off'
+			local ik2 = ui.get(conditions.defensive_builder)
+			ui.set_visible(conditions.override, enabled and i > 1 and luatabaa)
 			ui.set_visible(gui.conditions.state, luatabaa)
-			local yw = ui.get(gui.conditions[name].yaw) == '180'
-			local bs = ui.get(gui.conditions[name].roll)
-			local db = ui.get(gui.conditions[name].defensive_on) ~= 'Off'
+			local yw = ui.get(conditions.yaw) == '180'
+			local bs = ui.get(conditions.roll)
+			local db = ui.get(conditions.defensive_on) ~= 'Off'
 
-			local overriden = i == 1 or ui.get(gui.conditions[name].override)
+			local overriden = i == 1 or ui.get(conditions.override)
 
 			def.gui.hide_aa_tab(true)
-			ui.set_visible(gui.conditions[name].pitch, enabled and overriden and luatabaa)
-			ui.set_visible(gui.conditions[name].yaw_base, enabled and overriden and luatabaa)
-			ui.set_visible(gui.conditions[name].yaw, enabled and overriden and luatabaa)
-			ui.set_visible(gui.conditions[name].yaw_modifier, enabled and overriden and luatabaa and yw)
-			ui.set_visible(gui.conditions[name].modifier_offset, enabled and overriden and luatabaa and ui.get(gui.conditions[name].yaw_modifier) ~= 'Off' and ui.get(gui.conditions[name].yaw_modifier) ~= 'Hidden' and yw)
-			ui.set_visible(gui.conditions[name].yaw_value, enabled and overriden and luatabaa and yw)
-			ui.set_visible(gui.conditions[name].lr_yaw, enabled and overriden and luatabaa and yw)
-			ui.set_visible(gui.conditions[name].yaw_left, enabled and overriden and luatabaa and ui.get(gui.conditions[name].lr_yaw) and yw)
-			ui.set_visible(gui.conditions[name].yaw_right, enabled and overriden and luatabaa and ui.get(gui.conditions[name].lr_yaw) and yw)		
-			ui.set_visible(gui.conditions[name].desync, enabled and overriden and luatabaa)
-			ui.set_visible(gui.conditions[name].desync_invert, enabled and overriden and luatabaa and ok)
-			ui.set_visible(gui.conditions[name].desync_value, enabled and overriden and luatabaa and ok)
-			ui.set_visible(gui.conditions[name].delay, enabled and overriden and luatabaa)
-			ui.set_visible(gui.conditions[name].roll, enabled and overriden and luatabaa)
-			ui.set_visible(gui.conditions[name].roll_value, enabled and overriden and luatabaa and bs)
-			ui.set_visible(gui.conditions[name].defensive_on, enabled and overriden and luatabaa)
-			ui.set_visible(gui.conditions[name].defensive_builder, enabled and overriden and luatabaa and db)
-			ui.set_visible(gui.conditions[name].defensive_pitch, enabled and overriden and luatabaa and ik2 and db)
-			ui.set_visible(gui.conditions[name].defensive_yaw, enabled and overriden and luatabaa and ik2 and db)
-			ui.set_visible(gui.conditions[name].defensive_start, enabled and overriden and luatabaa and ik2 and db)
-			ui.set_visible(gui.conditions[name].defensive_end, enabled and overriden and luatabaa and ik2 and db)
+			ui.set_visible(conditions.pitch, enabled and overriden and luatabaa)
+			ui.set_visible(conditions.yaw_base, enabled and overriden and luatabaa)
+			ui.set_visible(conditions.yaw, enabled and overriden and luatabaa)
+			ui.set_visible(conditions.yaw_modifier, enabled and overriden and luatabaa and yw)
+			ui.set_visible(conditions.modifier_offset, enabled and overriden and luatabaa and ui.get(conditions.yaw_modifier) ~= 'Off' and ui.get(conditions.yaw_modifier) ~= 'Hidden' and yw)
+			ui.set_visible(conditions.yaw_value, enabled and overriden and luatabaa and yw)
+			ui.set_visible(conditions.lr_yaw, enabled and overriden and luatabaa and yw)
+			ui.set_visible(conditions.yaw_left, enabled and overriden and luatabaa and ui.get(conditions.lr_yaw) and yw)
+			ui.set_visible(conditions.yaw_right, enabled and overriden and luatabaa and ui.get(conditions.lr_yaw) and yw)		
+			ui.set_visible(conditions.desync, enabled and overriden and luatabaa)
+			ui.set_visible(conditions.desync_invert, enabled and overriden and luatabaa and ok)
+			ui.set_visible(conditions.desync_value, enabled and overriden and luatabaa and ok)
+			ui.set_visible(conditions.delay, enabled and overriden and luatabaa)
+			ui.set_visible(conditions.roll, enabled and overriden and luatabaa)
+			ui.set_visible(conditions.roll_value, enabled and overriden and luatabaa and bs)
+			ui.set_visible(conditions.defensive_on, enabled and overriden and luatabaa)
+			ui.set_visible(conditions.defensive_builder, enabled and overriden and luatabaa and db)
+			ui.set_visible(conditions.defensive_pitch, enabled and overriden and luatabaa and ik2 and db)
+			ui.set_visible(conditions.defensive_yaw, enabled and overriden and luatabaa and ik2 and db)
+			ui.set_visible(conditions.defensive_start, enabled and overriden and luatabaa and ik2 and db)
+			ui.set_visible(conditions.defensive_end, enabled and overriden and luatabaa and ik2 and db)
 		end
 	end
 
@@ -970,8 +978,6 @@ do
             return alive
 		end,
 		enable = function(cmd)
-			cmd.allow_send_packet = false
-			cmd.discharge_pending = true
 			ui.set(software.antiaim.angles.enabled, true)
 			ui.set(software.antiaim.angles.edge_yaw, false)
 		end,
@@ -1023,14 +1029,18 @@ do
 				ctx.state = 'Shared'
 			end
 
+			local conditions = gui.conditions[ctx.state]
 			local mode = 'custom'
-			local pitch = ui.get(gui.conditions[ctx.state].pitch)
+			local pitch = ui.get(conditions.pitch)
 			if def.antiaim:off_while() == 0 then
 				pitch = 0
-			elseif def.values.ticks > ui.get(gui.conditions[ctx.state].defensive_start) and def.values.ticks < ui.get(gui.conditions[ctx.state].defensive_end) and ui.get(gui.conditions[ctx.state].defensive_builder) and ui.get(gui.conditions[ctx.state].defensive_on) ~= 'Off' then
-				pitch = ui.get(gui.conditions[ctx.state].defensive_pitch)
+			elseif def.values.ticks > ui.get(conditions.defensive_start) 
+			and def.values.ticks < ui.get(conditions.defensive_end) 
+			and ui.get(conditions.defensive_builder) 
+			and ui.get(conditions.defensive_on) ~= 'Off' then
+				pitch = ui.get(conditions.defensive_pitch)
 			else
-				pitch = ui.get(gui.conditions[ctx.state].pitch)
+				pitch = ui.get(conditions.pitch)
 			end
 
 			ui.set(software.antiaim.angles.pitch[1], mode)
@@ -1041,50 +1051,59 @@ do
 			if not ui.get(gui.conditions[ctx.state].override) then
 				ctx.state = 'Shared'
 			end
-			local yawl = ui.get(gui.conditions[ctx.state].yaw_left)
-			local yawr = ui.get(gui.conditions[ctx.state].yaw_right)
-			local offsetyaw = ui.get(gui.conditions[ctx.state].yaw_value)
-			local delayedzv = ui.get(gui.conditions[ctx.state].delay)
-			local yoffset = offsetyaw
-			local yaw_modifier = ui.get(gui.conditions[ctx.state].yaw_modifier)
-			local yawmodofs = ui.get(gui.conditions[ctx.state].modifier_offset)
-			local checklr = ui.get(gui.conditions[ctx.state].lr_yaw)
-		    local inverted = def.values.body < 0
-			local yaw_value = inverted and yawl or yawr
-			if not checklr then
-				yaw_value = 0
-			end
-			local yaw = ui.get(gui.conditions[ctx.state].yaw)
-			local yaw_base = ui.get(gui.conditions[ctx.state].yaw_base)
+			local conditions = gui.conditions[ctx.state]
+			local yawl = ui.get(conditions.yaw_left)
+			local yawr = ui.get(conditions.yaw_right)
+			local offsetyaw = ui.get(conditions.yaw_value)
+			local delayedzv = ui.get(conditions.delay)
+			local yaw_modifier = ui.get(conditions.yaw_modifier)
+			local yawmodofs = ui.get(conditions.modifier_offset)
+			local checklr = ui.get(conditions.lr_yaw)
+			local inverted = def.values.body < 0
+			local yaw_value = checklr and (inverted and yawl or yawr) or 0
+			local yaw = ui.get(conditions.yaw)
+			local yaw_base = ui.get(conditions.yaw_base)
 			local distance, delta = def.antistab.get_closest_target(g_ctx.lp)
-			local body_yaw_value = ui.get(gui.conditions[ctx.state].desync_invert) and ui.get(gui.conditions[ctx.state].desync_value) or -ui.get(gui.conditions[ctx.state].desync_value)
-			local desync = ui.get(gui.conditions[ctx.state].desync)
+			local body_yaw_value = ui.get(conditions.desync_invert) and ui.get(conditions.desync_value) or -ui.get(conditions.desync_value)
+			local desync = ui.get(conditions.desync)
 			local body_yaw_delay = delayedzv
 			local freestanding_body_yaw = false
-	
-			if def.values.ticks > ui.get(gui.conditions[ctx.state].defensive_start) and def.values.ticks < ui.get(gui.conditions[ctx.state].defensive_end) and ui.get(gui.conditions[ctx.state].defensive_builder) and ui.get(gui.conditions[ctx.state].defensive_on) ~= 'Off' and def.antiaim:off_while() ~= 0  then
+			
+			local chokedcommands = globals.chokedcommands()
+			local delay = body_yaw_delay
+			local target = delay * 2
+			inverted = (def.values.packets % target) >= delay
+			local val = inverted and ui.get(conditions.desync_value) or -ui.get(conditions.desync_value)
+
+			if def.values.ticks > ui.get(conditions.defensive_start) and 
+				def.values.ticks < ui.get(conditions.defensive_end) and 
+				ui.get(conditions.defensive_builder) and 
+				ui.get(conditions.defensive_on) ~= 'Off' and 
+				def.antiaim:off_while() ~= 0 then
 
 				local chokedcommands = globals.chokedcommands()
+				
 				if chokedcommands == 0 then
 					def.values.spin = def.values.spin + 25
+					if def.values.spin > 180 then
+						def.values.spin = -180
+					end
 				end
-				if def.values.spin > 180 then
-					def.values.spin = -180
-				end
-
-				if globals.tickcount() % 14 then
+				
+				if globals.tickcount() % 14 == 0 then
 					def.values.spinv2 = def.values.spinv2 + 25
+					if def.values.spinv2 > 180 then
+						def.values.spinv2 = -180
+					end
 				end
-				if def.values.spinv2 > 180 then
-					def.values.spinv2 = -180
-				end
-
+			
 				local value = 0
-				local val = ui.get(gui.conditions[ctx.state].defensive_yaw)
+				local val = ui.get(conditions.defensive_yaw)
 				if val == '2 Way' then
 					value = def.values.packets % 2 == 0 and 90 or -90
 				elseif val == '3 Way' then
-					value = def.values.packets % 3 == 1 and 90 or def.values.packets % 3 == 2 and -180 or -90
+					value = def.values.packets % 3 == 1 and 90 or 
+							(def.values.packets % 3 == 2 and -180 or -90)
 				elseif val == '1 Way' then
 					value = 180
 				elseif val == 'Hidden' then
@@ -1093,10 +1112,8 @@ do
 					value = def.values.spinv2
 				elseif val == 'Hidden V3' then
 					value = def.values.spinv2 / 2
-				else
-					value = 0
 				end
-
+			
 				ui.set(software.antiaim.angles.desync[1], 'opposite')
 				ui.set(software.antiaim.angles.desync[2], 1)
 				ui.set(software.antiaim.angles.freestanding_body_yaw, true)
@@ -1129,63 +1146,54 @@ do
 					yaw_base = 'local view'
 					desync = 'opposite'
 				elseif desync == 'Process' then
-					local chokedcommands = globals.chokedcommands()
-					local delay = body_yaw_delay
-					local target = delay * 2
-					inverted = (def.values.packets % target) >= delay
-					local val = inverted and ui.get(gui.conditions[ctx.state].desync_value) or -ui.get(gui.conditions[ctx.state].desync_value)
-	
-					yaw = ui.get(gui.conditions[ctx.state].yaw)
+					yaw = ui.get(conditions.yaw)
 					desync = 'static'
 					body_yaw_value = val
-	
+				
 					if chokedcommands == 0 then
 						def.values.spin = def.values.spin + 25
+						if def.values.spin > 180 then
+							def.values.spin = -180
+						end
 					end
-					if def.values.spin > 180 then
-						def.values.spin = -180
-					end
-	
+				
 					if yaw_modifier == 'Center' then
 						yawmodofs = inverted and yawmodofs or -yawmodofs
 					elseif yaw_modifier == 'Offset' then
 						yawmodofs = inverted and yawmodofs or 0
 					elseif yaw_modifier == 'Original' then
-						yawmodofs = def.values.packets % 3 == 1 and yawmodofs or def.values.packets % 3 == 2 and 0 or -yawmodofs
+						yawmodofs = def.values.packets % 3 == 1 and yawmodofs or 
+									(def.values.packets % 3 == 2 and 0 or -yawmodofs)
 					elseif yaw_modifier == 'Hidden' then
 						yawmodofs = def.values.spin / 4
 					else
 						yawmodofs = 0
 					end
-	
+				
 					if checklr then
 						yaw_value = inverted and yawr or yawl
 					end
 				else
-					yaw = ui.get(gui.conditions[ctx.state].yaw)
+					yaw = ui.get(conditions.yaw)
 					inverted = def.values.body < 0
 					if checklr then
 						yaw_value = inverted and yawr or yawl
 					end
-
-					local delay = body_yaw_delay
-					local target = delay * 2
-					inverted = (def.values.packets % target) >= delay
-	
-					local chokedcommands = globals.chokedcommands()
+				
 					if chokedcommands == 0 then
 						def.values.spin = def.values.spin + 25
+						if def.values.spin > 180 then
+							def.values.spin = -180
+						end
 					end
-					if def.values.spin > 180 then
-						def.values.spin = -180
-					end	
-	
+				
 					if yaw_modifier == 'Center' then
 						yawmodofs = inverted and yawmodofs or -yawmodofs
 					elseif yaw_modifier == 'Offset' then
 						yawmodofs = inverted and yawmodofs or 0
 					elseif yaw_modifier == 'Original' then
-						yawmodofs = def.values.packets % 3 == 1 and -yawmodofs or def.values.packets % 3 == 2 and yawmodofs or 0
+						yawmodofs = def.values.packets % 3 == 1 and -yawmodofs or 
+									(def.values.packets % 3 == 2 and yawmodofs or 0)
 					elseif yaw_modifier == 'Hidden' then
 						yawmodofs = def.values.spin / 4
 					else
@@ -1197,7 +1205,7 @@ do
 				ui.set(software.antiaim.angles.freestanding_body_yaw, freestanding_body_yaw)
 				ui.set(software.antiaim.angles.yaw_base, yaw_base)
 				ui.set(software.antiaim.angles.yaw[1], yaw)
-				ui.set(software.antiaim.angles.yaw[2], yoffset + yawmodofs + yaw_value)
+				ui.set(software.antiaim.angles.yaw[2], offsetyaw + yawmodofs + yaw_value)
 			end
 		end,	
 		yaw_jitter = function()
@@ -1209,8 +1217,9 @@ do
 			if not ui.get(gui.conditions[ctx.state].override) then
 				ctx.state = 'Shared'
 			end
-			local roll = ui.get(gui.conditions[ctx.state].roll_value)
-			if ui.get(gui.conditions[ctx.state].roll) then
+			local conditions = gui.conditions[ctx.state]
+			local roll = ui.get(conditions.roll_value)
+			if ui.get(conditions.roll) then
 				ui.set(software.antiaim.angles.roll, roll)
 			else
 				ui.set(software.antiaim.angles.roll, 0)
@@ -1379,9 +1388,6 @@ end
 
 do
 	local ctx = {}
-	local aspectr = 0
-	local cur_state = 0
-	local current_state = 'none'
 
 	local function add_bind(name, ref, gradient_fn, enabled_color, disabled_color)
 		enabled_color = {
@@ -1401,7 +1407,9 @@ do
 
 	function indicators.init()
 		gui.indicators = {}
-		
+		gui.aspectr = 0
+		gui.cur_state = 0
+		gui.current_state = 'none'
 		ctx.anims = {
 			a = 0,
 			b = 0,
@@ -1445,37 +1453,37 @@ do
 		gui.indicators.maincolor = ui.new_color_picker(gui.aa,gui.aaim,'Manual main color', 215, 215, 215)
 		gui.indicators.backcolor = ui.new_color_picker(gui.aa,gui.aaim,'Manual back color', 5, 5, 5, 0)
 
-		
-		ui.set_callback(gui.indicators.indicator, function()
+		local indicators = gui.indicators
+		ui.set_callback(indicators.indicator, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.indicators.indicator_font, function()
+		ui.set_callback(indicators.indicator_font, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.indicators.damage_indicator, function()
+		ui.set_callback(indicators.damage_indicator, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.indicators.damage_indicator_font, function()
+		ui.set_callback(indicators.damage_indicator_font, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.indicators.watermark_style, function()
+		ui.set_callback(indicators.watermark_style, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.indicators.watermark_font, function()
+		ui.set_callback(indicators.watermark_font, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.indicators.manual2arrows, function()
+		ui.set_callback(indicators.manual2arrows, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 
 		ctx.crosshair_indicator = {}
 		ctx.crosshair_indicator.binds = {}
 
-		add_bind('antarctica recode', gui.indicators.indicator)
+		add_bind('antarctica recode', indicators.indicator)
 		add_bind('doubletap', software.rage.binds.double_tap[2])
 		add_bind('hideshots', software.rage.binds.on_shot_anti_aim[1])
 		add_bind('damage', software.rage.binds.minimum_damage_override[2])
-		add_bind('state', gui.indicators.indicator)
+		add_bind('state', indicators.indicator)
 
 		gui.indicator_color = def.gui:hex_label({255,0,55})
 		gui.indicator_color2 = def.gui:hex_label({215,215,215})
@@ -1501,72 +1509,73 @@ do
 		
 		render.text(x, y, r, g, b, a, fl, opt, text)
 		
-		ctx.crosshair_indicator.y = ctx.crosshair_indicator.y + ui.get(gui.indicators.indicator_slider) * alpha
+		ctx.crosshair_indicator.y = ctx.crosshair_indicator.y + ui.get(indicators.indicator_slider) * alpha
 	end
 
 	def.visuals = {
 		interlerpfuncs = function()
 			backup.visual = {}
+			local indicators = gui.indicators
 			ctx.anims.f = motion.interp(ctx.anims.f, entity.get_prop(g_ctx.lp, 'm_bIsScoped'), 0.05)
 			ctx.anims.c = motion.interp(ctx.anims.c, entity.get_prop(g_ctx.lp, 'm_bIsScoped'), 0.1)
 			ctx.anims.n = motion.interp(ctx.anims.n, entity.get_prop(g_ctx.lp, 'm_bResumeZoom'), 0.1)
 			ctx.anims.d = motion.interp(ctx.anims.d, ui.get(software.visuals.effects.thirdperson[2]), 0.1)
-			ctx.anims.e = motion.interp(ctx.anims.e, ui.get(gui.indicators.manual2arrows), 0.1)
+			ctx.anims.e = motion.interp(ctx.anims.e, ui.get(indicators.manual2arrows), 0.1)
 			ctx.anims.t = motion.interp(ctx.anims.t, ui.get(software.rage.binds.minimum_damage_override[2]), 0.1)
-			local state = render.measure_text('d', get_state())
-			local gnom = get_state()
-			local state_all = gnom
-			local asp = ui.get(gui.aspectratio)
-			ctx.anims.z = motion.interp(ctx.anims.z, state == cur_state and ui.get(gui.indicators.indicator), 0.05)
-			ctx.anims.k = motion.interp(ctx.anims.k, ui.get(gui.indicators.indicator), 0.01)
-			ctx.anims.s = motion.interp(ctx.anims.s, asp == aspectr, 0.01)
-
-			if ctx.anims.s < .1 then
-				aspectr = asp
-			end
 			
+			local state = render.measure_text('d', get_state())
+			local asp = ui.get(gui.aspectratio)
+			ctx.anims.z = motion.interp(ctx.anims.z, state == gui.cur_state and ui.get(indicators.indicator), 0.05)
+			ctx.anims.k = motion.interp(ctx.anims.k, ui.get(indicators.indicator), 0.01)
+			ctx.anims.s = motion.interp(ctx.anims.s, asp == gui.aspectr, 0.01)
+		
+			if ctx.anims.s < 0.1 then
+				gui.aspectr = asp
+			end
+		
 			backup.visual.fov = ui.get(gui.zoom_on) and ctx.anims.f or entity.get_prop(g_ctx.lp, 'm_bIsScoped') * 1
 			backup.visual.state = ctx.anims.z or 1
 			backup.visual.ind = ctx.anims.k or 0
 			backup.visual.scoped = ctx.anims.c + ctx.anims.n or 0
 			backup.visual.thirdperson = ui.get(gui.thirdperson_on) and ctx.anims.d or 1
-			backup.visual.aspectratio = aspectr or 1
+			backup.visual.aspectratio = gui.aspectr or 1
 			cvar.r_aspectratio:set_float(backup.visual.aspectratio * 0.01)
-			backup.visual.manualenable = ctx.anims.e or ui.get(gui.indicators.manual2arrows) and 1 or 0
-
+			backup.visual.manualenable = ctx.anims.e or (ui.get(indicators.manual2arrows) and 1 or 0)
+		
 			ui.set(software.visuals.effects.fov, ui.get(gui.fov) - ui.get(gui.zoom) * backup.visual.fov)
 			ui.set(software.visuals.effects.zfov, 0)
-
+		
 			if entity.is_alive(g_ctx.lp) then
 				cvar.cam_idealdist:set_float(ui.get(gui.thirdperson) * backup.visual.thirdperson)
 			end
-
-			if ctx.anims.z < .1 then
-				cur_state = state
-				current_state = state_all
+		
+			if ctx.anims.z < 0.1 then
+				gui.cur_state = state
+				gui.current_state = state
 			end
 		end,
 		indicator = function()
 			ctx.crosshair_indicator.y = 15
+			local indicators = gui.indicators
 			ctx.crosshair_indicator.scope = backup.visual.scoped
 			for index, bind in ipairs(ctx.crosshair_indicator.binds) do
-				local alpha = motion.interp(bind.alpha, ui.get(gui.indicators.indicator) and ui.get(bind.ref), 0.07)
-				local chars = motion.interp(bind.chars, ui.get(gui.indicators.indicator) and ui.get(bind.ref) and backup.visual.ind > .1, 0.07)
+				local alpha = motion.interp(bind.alpha, ui.get(indicators.indicator) and ui.get(bind.ref), 0.07)
+				local chars = motion.interp(bind.chars, ui.get(indicators.indicator) and ui.get(bind.ref) and backup.visual.ind > .1, 0.07)
 				local name = backup.visual.ind > .1 and string.sub(bind.full_name, 1, math.floor(.5 + #bind.full_name * chars)) or bind.full_name
-				local n, y, a, w = ui.get(gui.indicators.indicator_color)
+				local n, y, a, w = ui.get(indicators.indicator_color)
 				local r, g, b, a = motion.lerp_color(bind.disabled_color[1], bind.disabled_color[2], bind.disabled_color[3], bind.disabled_color[4], n, y, a, w, alpha)
 				local text = name
 				local alphaz = alpha
 				local opt = '-'
-				if ui.get(gui.indicators.indicator_font) == 'Small' then
+				if ui.get(indicators.indicator_font) == 'Small' then
 					opt = '-'
-				elseif ui.get(gui.indicators.indicator_font) == 'Default' then
+				elseif ui.get(indicators.indicator_font) == 'Default' then
 					opt = ''
-				elseif ui.get(gui.indicators.indicator_font) == 'Bold' then
+				elseif ui.get(indicators.indicator_font) == 'Bold' then
 					opt = 'b'
 				end
 				if bind.full_name == 'antarctica' then
-					if ui.get(gui.indicators.indicator_font) == 'Small' then
+					if ui.get(indicators.indicator_font) == 'Small' then
 						text = bind.full_name:upper()
 					else
 						text = bind.full_name
@@ -1579,10 +1588,10 @@ do
 						[4] = 215 * alphaz,
 					}
 				elseif bind.full_name == 'state' then
-					if ui.get(gui.indicators.indicator_font) == 'Small' then
-						text = '`'..string.sub(current_state:upper(), 1, math.floor(.5 + #current_state * backup.visual.state))..'`'
+					if ui.get(indicators.indicator_font) == 'Small' then
+						text = '`'..string.sub(get_state():upper(), 1, math.floor(.5 + #get_state() * backup.visual.state))..'`'
 					else
-						text = '`'..string.sub(current_state:lower(), 1, math.floor(.5 + #current_state * backup.visual.state))..'`'
+						text = '`'..string.sub(get_state():lower(), 1, math.floor(.5 + #get_state() * backup.visual.state))..'`'
 					end
 					alphaz = backup.visual.state
 					clr = {
@@ -1592,7 +1601,7 @@ do
 						[4] = 215 * backup.visual.state,
 					}
 				else
-					if ui.get(gui.indicators.indicator_font) == 'Small' then
+					if ui.get(indicators.indicator_font) == 'Small' then
 						text = name:upper()
 					else
 						text = name
@@ -1614,50 +1623,51 @@ do
 			end
 		end,
 		watermark = function()
+			local indicators = gui.indicators
 			local opt = ''
-			if ui.get(gui.indicators.watermark_font) == 'Small' then
+			if ui.get(indicators.watermark_font) == 'Small' then
 				opt = '-'
-			elseif ui.get(gui.indicators.watermark_font) == 'Default' then
+			elseif ui.get(indicators.watermark_font) == 'Default' then
 				opt = ''
-			elseif ui.get(gui.indicators.watermark_font) == 'Bold' then
+			elseif ui.get(indicators.watermark_font) == 'Bold' then
 				opt = 'b'
 			end
-			if ui.get(gui.indicators.watermark_style) == 'New' then
-				local r, g, b, a = ui.get(gui.indicators.wmaincolor)
+			if ui.get(indicators.watermark_style) == 'New' then
+				local r, g, b, a = ui.get(indicators.wmaincolor)
 				local name = 'antarctica recode'
 				local text_size = render.measure_text(opt, name:upper())
 				render.text(g_ctx.screen[1] / 2 - text_size / 2, g_ctx.screen[2] - 15, r, g, b, 215, opt, nil, name:upper())
 		    else
-				local r, g, b, a = ui.get(gui.indicators.wmaincolor)
-				local r12, g12, b12, a12 = ui.get(gui.indicators.wbackcolor)
 				local version = 'v2 release'
 				local name = 'antarctica'
 				local version_size = render.measure_text(opt, version:upper())
 				local text_size = render.measure_text(opt, name:upper())
 				render.text(g_ctx.screen[1] / 2 - version_size / 2, g_ctx.screen[2] - 30, 215, 215, 215, 255, opt, nil, 
-				def.gui.text(r12, g12, b12, a12, r, g, b, a, version:upper(), 2))
+				def.gui.text(indicators.wbackcolor, indicators.wmaincolor, version:upper(), 2))
 				render.text(g_ctx.screen[1] / 2 - text_size / 2, g_ctx.screen[2] - 15, 215, 215, 215, 255, opt, nil, 
-				def.gui.text(r12, g12, b12, a12, r, g, b, a, name:upper(), 2))
+				def.gui.text(indicators.wbackcolor, indicators.wmaincolor, name:upper(), 2))
 		    end
 		end,
 		damage_indicator = function()
-			if not ui.get(gui.indicators.damage_indicator) then
+			local indicators = gui.indicators
+			if not ui.get(indicators.damage_indicator) then
 				return
 			end
-			local r, g, b = ui.get(gui.indicators.damage_indicator_color)
+			local r, g, b = ui.get(indicators.damage_indicator_color)
 			local opt = ''
-			if ui.get(gui.indicators.damage_indicator_font) == 'Small' then
+			if ui.get(indicators.damage_indicator_font) == 'Small' then
 				opt = '-'
-			elseif ui.get(gui.indicators.damage_indicator_font) == 'Default' then
+			elseif ui.get(indicators.damage_indicator_font) == 'Default' then
 				opt = ''
-			elseif ui.get(gui.indicators.damage_indicator_font) == 'Bold' then
+			elseif ui.get(indicators.damage_indicator_font) == 'Bold' then
 				opt = 'b'
 			end
 			render.text(g_ctx.screen[1] / 2 + 5, g_ctx.screen[2] / 2 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, math.floor(ui.get(software.rage.binds.minimum_damage_override[3]))) --* ctx.anims.t
 		end,
 		manual_arrows = function()
-			local r, g, b, a = ui.get(gui.indicators.maincolor)
-			local r12, g12, b12, a12 = ui.get(gui.indicators.backcolor)
+			local indicators = gui.indicators
+			local r, g, b, a = ui.get(indicators.maincolor)
+			local r12, g12, b12, a12 = ui.get(indicators.backcolor)
 			local le = render.measure_text('+', '⮜')
 			local re = render.measure_text('+', '⮞')
 
@@ -1729,36 +1739,34 @@ do
 			end
 			return false
 	    end,
-		dt_fix = function()
-			--if def.corr:peeking() then
-				local tickcount = globals.tickcount()
-				local m_nTickBase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
-				local weapon = entity.get_player_weapon(g_ctx.lp)
-				local m_flNextPrimaryAttack = entity.get_prop(weapon, 'm_flNextPrimaryAttack')
-			--	local m_flNextAttack = entity.get_prop(g_ctx.lp, 'm_flNextAttack')
+		fix_doubletap = function()
+			local tickcount = globals.tickcount()
+			local m_nTickBase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
+			local weapon = entity.get_player_weapon(g_ctx.lp)
+			local m_flNextPrimaryAttack = entity.get_prop(weapon, 'm_flNextPrimaryAttack')
 
-				local dt = tickcount > m_nTickBase
-	
-				if ui.get(software.rage.binds.double_tap[1]) and ui.get(software.rage.binds.double_tap[2]) and m_flNextPrimaryAttack < globals.curtime() - 0.01 then
-					ui.set(software.rage.binds.enabled[1], dt)
-				else
-					ui.set(software.rage.binds.enabled[1], true)
-				end
-			--else
-			--	ui.set(software.rage.binds.enabled[1], true)
-			--end
+			local dt = tickcount > m_nTickBase
+
+			if ui.get(software.rage.binds.double_tap[1]) and ui.get(software.rage.binds.double_tap[2]) and m_flNextPrimaryAttack < globals.curtime() - 0.2 and not g_ctx.grtck and ui.get(gui.menu.fixdt) then
+				ui.set(software.rage.binds.enabled[1], dt)
+			else
+				ui.set(software.rage.binds.enabled[1], true)
+			end
 		end,
 		fix_defensive = function(cmd)
 			ctx.state = get_state()
 			if not ui.get(gui.conditions[ctx.state].override) then
 				ctx.state = 'Shared'
 			end
+
+			local conditions = gui.conditions[ctx.state]
 			if not ui.get(software.rage.binds.double_tap[2]) then
 				return
 			end		
-			if ui.get(gui.conditions[ctx.state].defensive_on) == 'Always' then
+			if ui.get(conditions.defensive_on) == 'Always' then
 				cmd.force_defensive = true
-			elseif def.corr:peeking() and ui.get(gui.conditions[ctx.state].defensive_on) == 'Peek' then
+			elseif def.corr:peeking() and ui.get(conditions.defensive_on) == 'Peek' then
+				cmd.allow_send_packet = false
 				cmd.force_defensive = true
 			else
 				cmd.force_defensive = false
@@ -1842,7 +1850,7 @@ do
 			return
 		end
 		def.corr.fix_defensive(cmd)
-		def.corr.dt_fix()
+		def.corr.fix_doubletap()
 	end
 end
 
