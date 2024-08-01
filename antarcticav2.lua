@@ -7,7 +7,6 @@
 cvar.cl_foot_contact_shadows:set_int(0)
 cvar.sv_airaccelerate:set_int(100)
 
-
 local render = renderer
 local events = client
 
@@ -64,6 +63,8 @@ do
 	function software.init()
 		software.rage = {
 			binds = {
+				weapon_type = ui.reference('Rage', 'Weapon type', 'Weapon type'),
+				enabled = { ui.reference('rage', 'aimbot', 'enabled') },
 				minimum_damage = ui.reference('rage', 'aimbot', 'minimum damage'),
 				minimum_damage_override = {ui.reference('rage', 'aimbot', 'minimum damage override')},
 				minimum_hitchance = ui.reference('rage', 'aimbot', 'minimum hit chance'),
@@ -248,7 +249,7 @@ do
 		gui.menuc = def.gui:hex_label({215, 215, 215, 215})
 		--9FCA2BFF
 		
-		gui.menu.luac = ui.new_label(gui.aa,gui.lag, gui.color..'2.0 Debug, ' .. lua.user)
+		gui.menu.luac = ui.new_label(gui.aa,gui.lag, gui.color..'Loader, Release v2' .. lua.user)
 		gui.menu.lua = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Antarctica' ..gui.color..' Recode', 'Antiaim', 'Visuals', 'Misc')--⛧
 		gui.menu.miscellaneous = ui.new_combobox(gui.aa, gui.lag, '\n', 'Main', 'Other')
 
@@ -614,14 +615,14 @@ do
 
 	def.values = {
 		cmd = 0,
-		check = 0,
-		defensive = 0,
 		flags = 0,
         packets = 0,
 		body = 0,
 		choking = 0,
 		spin = 0,
 		spinv2 = 0,
+		max_tickbase = 0,
+		ticks = 0,
 		choking_bool = false,
 		run = function(cmd)
 			def.values.cmd = cmd.command_number
@@ -629,12 +630,19 @@ do
 			def.values.choking_bool = false
 		end,
 		predict = function(cmd)
-			if cmd.command_number == def.values.cmd then
-				local tickbase = entity.get_prop(entity.get_local_player(), 'm_nTickBase')
-				def.values.defensive = math.abs(tickbase - def.values.check)
-				def.values.check = math.max(tickbase, def.values.check or 0)
-				def.values.cmd = 0
+			local tickbase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
+			
+			if math.abs(tickbase - def.values.max_tickbase) > 64 then
+				def.values.max_tickbase = 0
 			end
+		
+			if tickbase > def.values.max_tickbase then
+				def.values.max_tickbase = tickbase
+			elseif def.values.max_tickbase > tickbase then
+				def.values.ticks = math.min(14, math.max(0, def.values.max_tickbase - tickbase - 1))
+			end
+
+			return def.values.ticks
 		end,
 		net = function(cmd)
 			if g_ctx.lp == nil then return end
@@ -674,8 +682,8 @@ do
 		gui.ladder = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Fast ladder')
 		gui.fl_amount = ui.new_combobox(gui.aa, gui.aaim, gui.menuc..'Amount', 'Dynamic', 'Maximum', 'Fluctuate')
 		gui.fl_variance = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Variance', 0, 100, 0, true, '%')
-		gui.fl_limit = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Limit', 1, ui.get(software.rage.binds.usercmd) - 1, 15, true, 'tk', 1, ctx.amount)
-		gui.fl_break = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Break', 1, ui.get(software.rage.binds.usercmd) - 1, 0, true, 'tk', 1, ctx.amount)
+		gui.fl_limit = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Limit', 1, ui.get(software.rage.binds.usercmd) - 1, 15, true, 't', 1, ctx.amount)
+		gui.fl_break = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Break', 1, ui.get(software.rage.binds.usercmd) - 1, 0, true, 't', 1, ctx.amount)
 		gui.ot_leg = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Leg movement', 'Off', 'Never slide', 'Always slide')
 		gui.manual_left = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Manual left')
 		gui.manual_right = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Manual right')
@@ -705,8 +713,8 @@ do
 
 		ctx.pitch = { [0] = 'Zero', [-89] = 'Up', [-45] = 'Semi-Up', [45] = 'Semi-Down', [89] = 'Down' }
 		ctx.statez = { [0] = 'Off' }
-		ctx.tick1 = { [3] = 'Default', [6] = 'Largest' }
-		ctx.tick2 = { [9] = 'Predict', [11] = 'Default', [13] = 'Largest' }
+		ctx.tick1 = { [0] = 'Default', [3] = 'Breakable', [6] = 'Largest' }
+		ctx.tick2 = { [7] = 'Predict', [11] = 'Breakable', [14] = 'Default' }
 
 		for i, name in pairs(ctx.condition_names) do
 			gui.state = '\a00000000'..name..''
@@ -725,15 +733,15 @@ do
 				desync = ui.new_combobox(gui.aa,gui.aaim, gui.menuc..'Body yaw'..gui.state, 'Off', 'Static', 'Process'),
 				desync_value = ui.new_slider(gui.aa,gui.aaim, '\n byw'..gui.state, 0, 180, 1, true, '°', 1, ctx.statez),
 				desync_invert = ui.new_hotkey(gui.aa, gui.aaim, gui.menuc..'Invert'..gui.state),
-				delay = ui.new_slider(gui.aa,gui.aaim, gui.menuc..'Delay'..gui.state, 1, 15, 1, true, 'tk', 1, ctx.amount),
+				delay = ui.new_slider(gui.aa,gui.aaim, gui.menuc..'Delay'..gui.state, 1, 15, 1, true, 't', 1, ctx.amount),
 				roll = ui.new_checkbox(gui.aa,gui.aaim, gui.warning..'Roll'..gui.state),
 				roll_value = ui.new_slider(gui.aa,gui.aaim, '\n ryw'..gui.state, -45, 45, 0, true, '°', 1, ctx.statez),
 				defensive_on = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod'..gui.state, 'Off', 'Peek', 'Always'),
 				defensive_builder = ui.new_checkbox(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod builder'..gui.state),
 				defensive_pitch = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod pitch'..gui.state, -89, 89, 0, true, '°', 1, ctx.pitch),
 				defensive_yaw = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod yaw'..gui.state, 'Off', '1 Way', '2 Way', '3 Way', 'Hidden', 'Hidden V2', 'Hidden V3'),
-				defensive_start = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod start'..gui.state, 3, 6, 3, true, 'tk', 1, ctx.tick1),
-				defensive_end = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod end'..gui.state, 9, 13, 11, true, 'tk', 1, ctx.tick2),
+				defensive_start = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod start'..gui.state, 0, 6, 0, true, 't', 1, ctx.tick1),
+				defensive_end = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod end'..gui.state, 7, 14, 14, true, 't', 1, ctx.tick2),
 			}
 
 			ui.set_callback(gui.conditions[name].override, function()
@@ -938,6 +946,7 @@ do
 	def.antiaim = {
 		brute = 0,
 		brute_end = 0,
+		weapons = { 'Global', 'G3SG1 / SCAR-20', 'SSG 08', 'AWP', 'R8 Revolver', 'Desert Eagle', 'Pistol', 'Zeus', 'Rifle', 'Shotgun', 'SMG', 'Machine gun' },
 		off_while = function()
 			if not ui.get(gui.spinwhendead) then
 				return
@@ -962,6 +971,7 @@ do
 		end,
 		enable = function(cmd)
 			cmd.allow_send_packet = false
+			cmd.discharge_pending = true
 			ui.set(software.antiaim.angles.enabled, true)
 			ui.set(software.antiaim.angles.edge_yaw, false)
 		end,
@@ -1017,7 +1027,7 @@ do
 			local pitch = ui.get(gui.conditions[ctx.state].pitch)
 			if def.antiaim:off_while() == 0 then
 				pitch = 0
-			elseif def.values.defensive > 3 and def.values.defensive < 11 and ui.get(gui.conditions[ctx.state].defensive_builder) and ui.get(gui.conditions[ctx.state].defensive_on) ~= 'Off' then
+			elseif def.values.ticks > ui.get(gui.conditions[ctx.state].defensive_start) and def.values.ticks < ui.get(gui.conditions[ctx.state].defensive_end) and ui.get(gui.conditions[ctx.state].defensive_builder) and ui.get(gui.conditions[ctx.state].defensive_on) ~= 'Off' then
 				pitch = ui.get(gui.conditions[ctx.state].defensive_pitch)
 			else
 				pitch = ui.get(gui.conditions[ctx.state].pitch)
@@ -1052,7 +1062,7 @@ do
 			local body_yaw_delay = delayedzv
 			local freestanding_body_yaw = false
 	
-			if def.values.defensive > ui.get(gui.conditions[ctx.state].defensive_start) and def.values.defensive < ui.get(gui.conditions[ctx.state].defensive_end) and ui.get(gui.conditions[ctx.state].defensive_builder) and ui.get(gui.conditions[ctx.state].defensive_on) ~= 'Off' and def.antiaim:off_while() ~= 0  then
+			if def.values.ticks > ui.get(gui.conditions[ctx.state].defensive_start) and def.values.ticks < ui.get(gui.conditions[ctx.state].defensive_end) and ui.get(gui.conditions[ctx.state].defensive_builder) and ui.get(gui.conditions[ctx.state].defensive_on) ~= 'Off' and def.antiaim:off_while() ~= 0  then
 
 				local chokedcommands = globals.chokedcommands()
 				if chokedcommands == 0 then
@@ -1494,11 +1504,10 @@ do
 		ctx.crosshair_indicator.y = ctx.crosshair_indicator.y + ui.get(gui.indicators.indicator_slider) * alpha
 	end
 
-	local debuy = 10
 	def.visuals = {
 		interlerpfuncs = function()
 			backup.visual = {}
-			ctx.anims.f = motion.interp(ctx.anims.f, entity.get_prop(g_ctx.lp, 'm_bIsScoped'), 0.05)--ctx.anims.f = motion.interp(ctx.anims.f, entity.get_prop(entity.get_player_weapon(g_ctx.lp), 'm_zoomLevel') > 0, 0.1)
+			ctx.anims.f = motion.interp(ctx.anims.f, entity.get_prop(g_ctx.lp, 'm_bIsScoped'), 0.05)
 			ctx.anims.c = motion.interp(ctx.anims.c, entity.get_prop(g_ctx.lp, 'm_bIsScoped'), 0.1)
 			ctx.anims.n = motion.interp(ctx.anims.n, entity.get_prop(g_ctx.lp, 'm_bResumeZoom'), 0.1)
 			ctx.anims.d = motion.interp(ctx.anims.d, ui.get(software.visuals.effects.thirdperson[2]), 0.1)
@@ -1538,10 +1547,8 @@ do
 			end
 		end,
 		indicator = function()
-			
 			ctx.crosshair_indicator.y = 15
 			ctx.crosshair_indicator.scope = backup.visual.scoped
-	
 			for index, bind in ipairs(ctx.crosshair_indicator.binds) do
 				local alpha = motion.interp(bind.alpha, ui.get(gui.indicators.indicator) and ui.get(bind.ref), 0.07)
 				local chars = motion.interp(bind.chars, ui.get(gui.indicators.indicator) and ui.get(bind.ref) and backup.visual.ind > .1, 0.07)
@@ -1600,12 +1607,11 @@ do
 				end
 
 				add_crosshair_text(g_ctx.screen[1] / 2, g_ctx.screen[2] / 2 + ctx.crosshair_indicator.y, clr[1], clr[2], clr[3], clr[4], opt, 0, text, alphaz)
-				
 				ctx.crosshair_indicator.binds[index].alpha = alpha
 				ctx.crosshair_indicator.binds[index].name = name
 				ctx.crosshair_indicator.binds[index].chars = chars
 				ctx.crosshair_indicator.binds[index].color = r, g, b, a
-			end	
+			end
 		end,
 		watermark = function()
 			local opt = ''
@@ -1624,7 +1630,7 @@ do
 		    else
 				local r, g, b, a = ui.get(gui.indicators.wmaincolor)
 				local r12, g12, b12, a12 = ui.get(gui.indicators.wbackcolor)
-				local version = 'v2 debug'
+				local version = 'v2 release'
 				local name = 'antarctica'
 				local version_size = render.measure_text(opt, version:upper())
 				local text_size = render.measure_text(opt, name:upper())
@@ -1650,15 +1656,13 @@ do
 			render.text(g_ctx.screen[1] / 2 + 5, g_ctx.screen[2] / 2 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, math.floor(ui.get(software.rage.binds.minimum_damage_override[3]))) --* ctx.anims.t
 		end,
 		manual_arrows = function()
-			local bodyyaw = def.values.body < 0
 			local r, g, b, a = ui.get(gui.indicators.maincolor)
 			local r12, g12, b12, a12 = ui.get(gui.indicators.backcolor)
-
 			local le = render.measure_text('+', '⮜')
 			local re = render.measure_text('+', '⮞')
 
 			render.text(
-			g_ctx.selected_manual == 2 and g_ctx.screen[1] / 2 - re / 2 + 55 or g_ctx.screen[1] / 2 - re / 2 + 55, 
+			g_ctx.selected_manual == 2 and g_ctx.screen[1] / 2 - re / 2 + 58 or g_ctx.screen[1] / 2 - re / 2 + 58, 
 			g_ctx.screen[2] / 2 - re + 2, 
 			g_ctx.selected_manual == 2 and r or r12, 
 			g_ctx.selected_manual == 2 and g or g12, 
@@ -1725,6 +1729,25 @@ do
 			end
 			return false
 	    end,
+		dt_fix = function()
+			--if def.corr:peeking() then
+				local tickcount = globals.tickcount()
+				local m_nTickBase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
+				local weapon = entity.get_player_weapon(g_ctx.lp)
+				local m_flNextPrimaryAttack = entity.get_prop(weapon, 'm_flNextPrimaryAttack')
+			--	local m_flNextAttack = entity.get_prop(g_ctx.lp, 'm_flNextAttack')
+
+				local dt = tickcount > m_nTickBase
+	
+				if ui.get(software.rage.binds.double_tap[1]) and ui.get(software.rage.binds.double_tap[2]) and m_flNextPrimaryAttack < globals.curtime() - 0.01 then
+					ui.set(software.rage.binds.enabled[1], dt)
+				else
+					ui.set(software.rage.binds.enabled[1], true)
+				end
+			--else
+			--	ui.set(software.rage.binds.enabled[1], true)
+			--end
+		end,
 		fix_defensive = function(cmd)
 			ctx.state = get_state()
 			if not ui.get(gui.conditions[ctx.state].override) then
@@ -1819,6 +1842,7 @@ do
 			return
 		end
 		def.corr.fix_defensive(cmd)
+		def.corr.dt_fix()
 	end
 end
 
@@ -1857,7 +1881,7 @@ do
 	events.set_event_callback('shutdown', gui.shut)
 	events.set_event_callback('shutdown', cwar.shutdown)
 	events.set_event_callback('net_update_end', def.values.net)
-	events.set_event_callback('level_init', function() def.values.check, def.values.defensive = 0, 0 end)
+	events.set_event_callback('level_init', function() def.values.max_tickbase, def.values.ticks = 0, 0 end)
 	events.set_event_callback('pre_render', gui.animbuilder)
 end
 
