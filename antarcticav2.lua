@@ -1490,7 +1490,7 @@ do
 	end
 
 	add_crosshair_text = function(x, y, r, g, b, a, fl, opt, text, alpha)
-
+		local indicators = gui.indicators
 		if alpha == nil then
 			alpha = 1
 		end
