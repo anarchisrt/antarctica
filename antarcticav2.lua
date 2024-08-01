@@ -249,7 +249,7 @@ do
 		gui.menuc = def.gui:hex_label({215, 215, 215, 215})
 		--9FCA2BFF
 		
-		gui.menu.luac = ui.new_label(gui.aa,gui.lag, gui.color..'Loader, Release v2' .. lua.user)
+		gui.menu.luac = ui.new_label(gui.aa,gui.lag, gui.color..'Loader, Release v2 -' .. lua.user)
 		gui.menu.lua = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Antarctica' ..gui.color..' Recode', 'Antiaim', 'Visuals', 'Misc')--⛧
 		gui.menu.miscellaneous = ui.new_combobox(gui.aa, gui.lag, '\n', 'Main', 'Other')
 
