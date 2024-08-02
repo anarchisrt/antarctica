@@ -45,6 +45,8 @@ end
 local lua = {}
 
 lua.sound = 'ui/csgo_ui_contract_type1'
+lua.sf = false
+lua.ba = false
 lua.network = panorama.open().SteamOverlayAPI.OpenExternalBrowserURL
 cvar.play:invoke_callback(lua.sound)
 
@@ -105,12 +107,13 @@ do
 		}
 		software.visuals = {
 			effects = {
-				thirdperson = { ui.reference('VISUALS', 'Effects', 'Force third person (alive)') },
+				thirdperson = { ui.reference('visuals', 'effects', 'force third person (alive)') },
 				dpi = ui.reference('misc', 'settings', 'dpi scale'),
 				clrmenu = ui.reference('misc', 'settings', 'menu color'),
-				output = ui.reference('Misc', 'Miscellaneous', 'Draw console output'),
-				fov = ui.reference('Misc', 'Miscellaneous', 'override fov'),
-				zfov = ui.reference('Misc', 'Miscellaneous', 'override zoom fov')
+				output = ui.reference('misc', 'miscellaneous', 'draw console output'),
+				name = { ui.reference('visuals', 'player esp', 'name') },
+				fov = ui.reference('misc', 'miscellaneous', 'override fov'),
+				zfov = ui.reference('misc', 'miscellaneous', 'override zoom fov')
 			}
 		}
 	end
@@ -198,7 +201,7 @@ do
 	function motion.logs()
 		local offset, x, y = 0, 10, -9
 		for idx, data in ipairs(lua) do
-			if globals.curtime() - data[3] < 5 and not (#lua > 7 and idx < #lua - 7) and entity.is_alive(g_ctx.lp) then
+			if globals.curtime() - data[3] < 5 and not (#lua > 7 and idx < #lua - 7) and ui.get(gui.menu.outputlogs) == 'Lua' and entity.is_alive(g_ctx.lp) then
 				data[2] = motion.animation(data[2], 255, 4)
 			else
 				data[2] = motion.animation(data[2], 0, 4)
@@ -221,7 +224,7 @@ do
 			end
 
 			if data[7] then
-				render.text(x + g_ctx.screen[1] / 2 - text_sizex / 2, y + g_ctx.screen[2] - 300 - offset, data[8], data[9], data[10], data[11] * (data[2] / 255), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
+				render.text(x + g_ctx.screen[1] * .5 - text_sizex * .5, y + g_ctx.screen[2] - 300 - offset, data[8], data[9], data[10], data[11] * (data[2] / 255), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
 			end
 			
 			if data[2] < .1 then table.remove(lua, idx) end
@@ -249,10 +252,10 @@ do
 		gui.menuc = def.gui:hex_label({215, 215, 215, 215})
 		--9FCA2BFF
 		
-		gui.menu.lua = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Antarctica' ..gui.color..' Recode', 'Antiaim', 'Visuals', 'Misc')--⛧
+		gui.menu.lua = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Antarctica' ..gui.color..' Recode', 'Antiaim', 'Visuals', 'Misc', 'Helps')
 		gui.menu.miscellaneous = ui.new_combobox(gui.aa, gui.lag, '\n', 'Main', 'Other')
 
-		gui.anim.builderanim = {'off', '1', '.5', '.0', 'bsod'}
+		gui.anim.builderanim = {'Off', '1', '0.5', '0.0', 'Process'}
 		gui.anim.anm = {'Move lean', 'Run in air', 'Line run', 'Static legs in air', 'Static legs on ground', 'Model scale'}
 		gui.anim.animbreaker = ui.new_combobox(gui.aa, gui.abcd, gui.risk..'Animations', 'Move lean', 'Run in air', 'Line run', 'Static legs in air', 'Static legs on ground', 'Model scale')
 
@@ -263,8 +266,8 @@ do
 		for i, name in pairs(gui.anim.anm) do
 			gui.anim.builder[name] = {
 				pose_layer = ui.new_combobox(gui.aa, gui.abcd, gui.risk..'Settings '..name, gui.anim.builderanim),
-				bsod1 = ui.new_slider(gui.aa,gui.abcd, gui.risk..'Bsod start '..name, .0, 10, .1, true, nil, .1),
-				bsod2 = ui.new_slider(gui.aa,gui.abcd, gui.risk..'Bsod end '..name, .0, 10, .1, true, nil, .1),
+				bsod1 = ui.new_slider(gui.aa,gui.abcd, gui.risk..'Process start '..name, .0, 10, .1, true, nil, .1),
+				bsod2 = ui.new_slider(gui.aa,gui.abcd, gui.risk..'Process end '..name, .0, 10, .1, true, nil, .1),
 			}
 			ui.set_callback(gui.anim.builder[name].pose_layer, function()
 				cvar.play:invoke_callback(lua.sound)
@@ -274,7 +277,8 @@ do
 
 		gui.menu.fixdt = ui.new_checkbox(gui.aa, gui.lag, gui.risk..'Doubletap teleport with enemy fix')
 
-		gui.menu.outputlogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Output logs')
+		gui.menu.outputlogs = ui.new_combobox(gui.aa, gui.aaim, gui.menuc..'Output logs', 'Cheat', 'Lua')
+		gui.menu.logsfont = ui.new_combobox(gui.aa, gui.aaim, '\n Logs font', 'Small', 'Verdana', 'Bold')
 		gui.menu.cenlogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Center logs')
 		gui.menu.hitlogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Hit logs')
 		gui.menu.hitcolor = ui.new_color_picker(gui.aa,gui.aaim, 'Hit logs color', 215, 215, 215)
@@ -284,7 +288,6 @@ do
 		gui.menu.regcolor = ui.new_color_picker(gui.aa,gui.aaim,'Reg logs color', 155, 155, 215)
 		gui.menu.nadelogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Hurt logs')
 		gui.menu.nadecolor = ui.new_color_picker(gui.aa,gui.aaim,'Hurt logs color', 155, 215, 155)
-		gui.menu.logsfont = ui.new_combobox(gui.aa, gui.aaim, '\n Logs font', 'Small', 'Verdana', 'Bold')
 
 		gui.thirdperson = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Thirdperson distance', 30, 300, cvar.cam_idealdist:get_int(), true, '°')
 		gui.thirdperson_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Enable thirdperson animation')
@@ -329,6 +332,15 @@ do
 		ui.set_callback(gui.menu.fixdt, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
+	end
+
+	function gui.select(tbl, value)
+		for i = 1, #tbl do
+			if tbl[i] == value then
+				return true
+			end
+		end
+		return false
 	end
 
 		local native_GetClientEntity = vtable_bind('client.dll', 'VClientEntityList003', 3, 'void*(__thiscall*)(void*, int)')
@@ -405,10 +417,10 @@ do
 				local models = ui.get(gui.anim.builder['Model scale'].bsod1) * .1
 				local modelsc = ui.get(gui.anim.builder['Model scale'].bsod2) * .1
 	
-				local realtime12 = globals.realtime() / 2 % 1
+				local realtime12 = globals.realtime() * .5 % 1
 				local nolag12 = realtime12
 	
-				local realtime6 = globals.realtime() / 2 % 1
+				local realtime6 = globals.realtime() * .5 % 1
 				local nolag6 = realtime6
 				local anim_layers = ffi.cast(animation_layer_t, ffi.cast(char_ptr, player_ptr) + 0x2990)[0]
 	
@@ -416,13 +428,13 @@ do
 					if a12 == '1' then
 						anim_layers[12]['weight'] = 1
 						anim_layers[12]['cycle'] = nolag12
-					elseif a12 == '.5' then
+					elseif a12 == '0.5' then
 						anim_layers[12]['weight'] = .5
 						anim_layers[12]['cycle'] = nolag12
-					elseif a12 == '.0' then
+					elseif a12 == '0.0' then
 						anim_layers[12]['weight'] = .0
 						anim_layers[12]['cycle'] = nolag12
-					elseif a12 == 'bsod' then
+					elseif a12 == 'Process' then
 						anim_layers[12]['weight'] = events.random_float(bsdstrt12, bsdnd12)
 						anim_layers[12]['cycle'] = nolag12
 					end
@@ -431,13 +443,13 @@ do
 						if a6 == '1' then
 							anim_layers[6]['weight'] = 1
 							anim_layers[6]['cycle'] = nolag6
-						elseif a6 == '.5' then
+						elseif a6 == '0.5' then
 							anim_layers[6]['weight'] = .5
 							anim_layers[6]['cycle'] = nolag6
-						elseif a6 == '.0' then
+						elseif a6 == '0.0' then
 							anim_layers[6]['weight'] = .0
 							anim_layers[6]['cycle'] = nolag6
-						elseif a6 == 'bsod' then
+						elseif a6 == 'Process' then
 							anim_layers[6]['weight'] = events.random_float(bsdstrt6, bsdnd6)
 							anim_layers[6]['cycle'] = nolag6
 						end
@@ -445,42 +457,42 @@ do
 			
 					if p7 == '1' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 7)
-					elseif p7 == '.5' then
+					elseif p7 == '0.5' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 7)
-					elseif p7 == '.0' then
+					elseif p7 == '0.0' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 7)
-					elseif p7 == 'bsod' then
+					elseif p7 == 'Process' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt7, bsdnd7), 7)
 					end
 			
 					if p6 == '1' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 6)
-					elseif p6 == '.5' then
+					elseif p6 == '0.5' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 6)
-					elseif p6 == '.0' then
+					elseif p6 == '0.0' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 6)
-					elseif p6 == 'bsod' then
+					elseif p6 == 'Process' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(sbsdstrt, sbsdnd), 6)
 					end
 
 					if p0 == '1' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 0)
-					elseif p0 == '.5' then
+					elseif p0 == '0.5' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 0)
-					elseif p0 == '.0' then
+					elseif p0 == '0.0' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 0)
-					elseif p0 == 'bsod' then
+					elseif p0 == 'Process' then
 						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt0, bsdnd0), 0)
 					end
 				end
 	
 				if mdscl == '1' then
 					entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
-				elseif mdscl == '.5' then
+				elseif mdscl == '0.5' then
 					entity.set_prop(g_ctx.lp, 'm_flModelScale', .5)
-				elseif mdscl == '.0' then
+				elseif mdscl == '0.0' then
 					entity.set_prop(g_ctx.lp, 'm_flModelScale', .0)
-				elseif mdscl == 'bsod' then
+				elseif mdscl == 'Process' then
 					entity.set_prop(g_ctx.lp, 'm_flModelScale', events.random_float(models, modelsc))
 				else
 					entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
@@ -516,7 +528,7 @@ do
 			text = function(color_start, color_end, text, speed)
 				local r1, g1, b1, a1 = ui.get(color_start)
 				local r2, g2, b2, a2 = ui.get(color_end)
-				local highlight_fraction =  (globals.realtime() / 2 % 1.2 * speed) - 1.2
+				local highlight_fraction =  (globals.realtime() * .5 % 1.2 * speed) - 1.2
 				local output = ''
 				for idx = 1, #text do
 					local character = text:sub(idx, idx)
@@ -547,8 +559,12 @@ do
 			local luatabaa = ui.get(gui.menu.lua) == 'Antiaim'
 			local luatabvis = ui.get(gui.menu.lua) == 'Visuals'
 			local luatabmisc = ui.get(gui.menu.lua) == 'Misc'
+			local luatabpl = ui.get(gui.menu.lua) == 'Helps'
 			local indsd = ui.get(indicators.indicator)
 			local dmgind = ui.get(indicators.damage_indicator)
+			local logz = ui.get(gui.menu.outputlogs) == 'Lua'
+			local nameesp = ui.get(gui.indicators.name)
+			local basf = ui.get(gui.indicators.basf)
 			ui.set_visible(gui.menu.miscellaneous, luatabaa)
 			ui.set_visible(indicators.manual2arrows, luatabvis)
 			ui.set_visible(indicators.maincolor, luatabvis)
@@ -572,29 +588,62 @@ do
 			ui.set_visible(gui.menu.regcolor, luatabmisc)
 			ui.set_visible(gui.menu.hitcolor, luatabmisc)
 			ui.set_visible(gui.menu.misscolor, luatabmisc)
-			ui.set_visible(gui.menu.logsfont, luatabmisc)
-			ui.set_visible(gui.menu.cenlogs, luatabmisc)
+			ui.set_visible(gui.menu.logsfont, luatabmisc and logz)
+			ui.set_visible(gui.menu.cenlogs, luatabmisc and logz)
 			ui.set_visible(gui.menu.outputlogs, luatabmisc)
 			ui.set_visible(gui.menu.nadelogs, luatabmisc)
 			ui.set_visible(gui.menu.nadecolor, luatabmisc)
 			ui.set_visible(gui.aspectratio, luatabvis)
+			ui.set_visible(gui.indicators.name, luatabvis)
+			ui.set_visible(gui.indicators.name_color, luatabvis and nameesp)
+			ui.set_visible(gui.indicators.name_font, luatabvis and nameesp)
 			ui.set_visible(gui.fov, luatabvis)
 			ui.set_visible(gui.zoom, luatabvis)
 			ui.set_visible(gui.zoom_on, luatabvis)
 			ui.set_visible(gui.menu.grfl, luatabmisc)
 			ui.set_visible(gui.menu.fixdt, luatabmisc)
 
+			ui.set(software.visuals.effects.name[1], not nameesp)
+			ui.set_enabled(software.visuals.effects.name[1], not nameesp)
+
+			local enpl = ui.get(gui.corrections.enable_pl)
+			local overbody = ui.get(gui.corrections.overb_pl) ~= 'Off'
+			local constructor_pl = luatabpl and enpl
+			local po_pl = ui.get(gui.corrections.overbs_pl)
+
+			ui.set_visible(gui.corrections.enable_pl, luatabpl)
+			ui.set_visible(gui.corrections.overb_pl, constructor_pl)
+			ui.set_visible(gui.corrections.overbs_pl, constructor_pl and overbody)
+			ui.set_visible(gui.corrections.misses_pl, constructor_pl and overbody and gui.select(po_pl, 'After misses'))
+			ui.set_visible(gui.corrections.hp_pl, constructor_pl and overbody and gui.select(po_pl, 'HP'))
+			ui.set_visible(gui.indicators.basf, constructor_pl)
+			ui.set_visible(gui.indicators.basf_color, constructor_pl and basf)
+			ui.set_visible(gui.indicators.basf_font, constructor_pl and basf)
+
+			local sfover = ui.get(gui.corrections.oversf_pl) ~= 'Off'
+			local sfpo_pl = ui.get(gui.corrections.oversfs_pl)
+
+			ui.set_visible(gui.corrections.oversf_pl, constructor_pl)
+			ui.set_visible(gui.corrections.oversfs_pl, constructor_pl and sfover)
+			ui.set_visible(gui.corrections.sfmisses_pl, constructor_pl and sfover and gui.select(sfpo_pl, 'After misses'))
+			ui.set_visible(gui.corrections.sfhp_pl, constructor_pl and sfover and gui.select(sfpo_pl, 'HP'))
+
 			ui.set_visible(gui.anim.animbreaker, luatabmisc)
 			for i, name in pairs(gui.anim.anm) do
 				local opened = name == ui.get(gui.anim.animbreaker)
-				local bsod = ui.get(gui.anim.builder[name].pose_layer) == 'bsod'
+				local bsod = ui.get(gui.anim.builder[name].pose_layer) == 'Process'
 				ui.set_visible(gui.anim.builder[name].pose_layer, opened and luatabmisc)
 				ui.set_visible(gui.anim.builder[name].bsod1, opened and luatabmisc and bsod)
 				ui.set_visible(gui.anim.builder[name].bsod2, opened and luatabmisc and bsod)
 			end
 
-			ui.set(software.visuals.effects.output, false)
-			ui.set_enabled(software.visuals.effects.output, false)
+			if ui.get(gui.menu.outputlogs) == 'Lua' then
+				ui.set(software.visuals.effects.output, false)
+				ui.set_enabled(software.visuals.effects.output, false)
+			else
+				ui.set(software.visuals.effects.output, true)
+				ui.set_enabled(software.visuals.effects.output, true)
+			end
 		end
 
 		function gui.animbuilder()
@@ -636,19 +685,22 @@ do
 			def.values.choking_bool = false
 		end,
 		predict = function(cmd)
+			local tickcount = globals.tickcount()
 			local tickbase = entity.get_prop(g_ctx.lp, 'm_nTickBase') or 0
+
+			local exploit = tickcount > tickbase
 			
-			if math.abs(tickbase - def.values.max_tickbase) > 64 then
+			if math.abs(tickbase - def.values.max_tickbase) > 64 and exploit then
 				def.values.max_tickbase = 0
 			end
 		  
 			if tickbase > def.values.max_tickbase then
 				def.values.max_tickbase = tickbase
 			elseif def.values.max_tickbase > tickbase then
-				def.values.ticks = math.min(14, math.max(0, def.values.max_tickbase - tickbase - 1))
+				def.values.ticks = exploit and math.min(14, math.max(0, def.values.max_tickbase - tickbase - 1)) or 0
 			end
-	
-			return def.values.ticks
+			
+			return exploit and def.values.ticks or 0
 		end,
 		net = function(cmd)
 			if g_ctx.lp == nil then return end
@@ -684,6 +736,7 @@ do
 		ctx.amount = { [1] = 'Off', [15] = 'Max', [16] = 'Ext', [17] = 'Lag' }
 
 		gui.spinwhendead = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Spin when'.. gui.warning .. ' enemies' .. gui.menuc ..' dead')
+		gui.spinwhendeadspeed = ui.new_slider(gui.aa,gui.lag, gui.menuc..'Spin speed', 0, 60, 5, true, '°')
 		gui.antihead = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Anti back')
 		gui.ladder = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Fast ladder')
 		gui.fl_amount = ui.new_combobox(gui.aa, gui.aaim, gui.menuc..'Amount', 'Dynamic', 'Maximum', 'Fluctuate')
@@ -691,8 +744,14 @@ do
 		gui.fl_limit = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Limit', 1, ui.get(software.rage.binds.usercmd) - 1, 15, true, 't', 1, ctx.amount)
 		gui.fl_break = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Break', 1, ui.get(software.rage.binds.usercmd) - 1, 0, true, 't', 1, ctx.amount)
 		gui.ot_leg = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Leg movement', 'Off', 'Never slide', 'Always slide')
-		gui.manual_left = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Manual left')
-		gui.manual_right = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Manual right')
+		gui.manual_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Manual enable')
+		gui.manual_left = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Left')
+		gui.manual_right = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Right')
+		gui.manual_back = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Back')
+		gui.manual_forward = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Forward')
+		gui.manual_reset = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Reset')
+		gui.airstop = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Airstop')
+		gui.airstopb = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Bind')
 		gui.freestand = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Freestand')
 		gui.hideshots = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Hideshots')
 		gui.export = ui.new_button(gui.aa, gui.lag, gui.menuc..'Export config anti-aim', function() def.antiaim:export_cfg() end)
@@ -714,6 +773,12 @@ do
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 		ui.set_callback(gui.ot_leg, function()
+			cvar.play:invoke_callback(lua.sound)
+		end, true)
+		ui.set_callback(gui.manual_on, function()
+			cvar.play:invoke_callback(lua.sound)
+		end, true)
+		ui.set_callback(gui.airstop, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 
@@ -742,12 +807,12 @@ do
 				delay = ui.new_slider(gui.aa,gui.aaim, gui.menuc..'Delay'..gui.state, 1, 15, 1, true, 't', 1, ctx.amount),
 				roll = ui.new_checkbox(gui.aa,gui.aaim, gui.warning..'Roll'..gui.state),
 				roll_value = ui.new_slider(gui.aa,gui.aaim, '\n ryw'..gui.state, -45, 45, 0, true, '°', 1, ctx.statez),
-				defensive_on = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod'..gui.state, 'Off', 'Peek', 'Always'),
-				defensive_builder = ui.new_checkbox(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod builder'..gui.state),
-				defensive_pitch = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod pitch'..gui.state, -89, 89, 0, true, '°', 1, ctx.pitch),
-				defensive_yaw = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod yaw'..gui.state, 'Off', '1 Way', '2 Way', '3 Way', 'Hidden', 'Hidden V2', 'Hidden V3'),
-				defensive_start = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod start'..gui.state, 0, 6, 0, true, 't', 1, ctx.tick1),
-				defensive_end = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' bsod end'..gui.state, 7, 14, 14, true, 't', 1, ctx.tick2),
+				defensive_on = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process'..gui.state, 'Off', 'Peek', 'Always'),
+				defensive_builder = ui.new_checkbox(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process builder'..gui.state),
+				defensive_pitch = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process pitch'..gui.state, -89, 89, 0, true, '°', 1, ctx.pitch),
+				defensive_yaw = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process yaw'..gui.state, 'Off', '1 Way', '2 Way', '3 Way', 'Hidden', 'Hidden V2', 'Hidden V3'),
+				defensive_start = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process start'..gui.state, 0, 6, 0, true, 't', 1, ctx.tick1),
+				defensive_end = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process end'..gui.state, 7, 14, 14, true, 't', 1, ctx.tick2),
 			}
 
 			local conditions = gui.conditions[name]
@@ -790,21 +855,32 @@ do
 		local luatabaa = ui.get(gui.menu.lua) == 'Antiaim' and ui.get(gui.menu.miscellaneous) == 'Main'
 		local luatabaafl = ui.get(gui.menu.lua) == 'Antiaim' and ui.get(gui.menu.miscellaneous) == 'Other'
 		local luatabaaot = ui.get(gui.menu.lua) == 'Antiaim' and ui.get(gui.menu.miscellaneous) == 'Other'
+		local spins = ui.get(gui.spinwhendead)
+		local man = ui.get(gui.manual_on)
+		local airf = ui.get(gui.airstop)
 
 		ui.set_visible(gui.fl_amount, luatabaafl)
 		ui.set_visible(gui.fl_break, luatabaafl)
 		ui.set_visible(gui.fl_variance, luatabaafl)
 		ui.set_visible(gui.fl_limit, luatabaafl)
 		ui.set_visible(gui.ot_leg, luatabaaot)
-		ui.set_visible(gui.manual_left, luatabaaot)
+		ui.set_visible(gui.manual_on, luatabaaot)
+		ui.set_visible(gui.manual_left, luatabaaot and man)
+		ui.set_visible(gui.manual_forward, luatabaaot and man)
+		ui.set_visible(gui.manual_back, luatabaaot and man)
+		ui.set_visible(gui.manual_reset, luatabaaot and man)
 		ui.set_visible(gui.antihead, luatabaaot)
 		ui.set_visible(gui.ladder, luatabaaot)
-		ui.set_visible(gui.manual_right, luatabaaot)
+		ui.set_visible(gui.manual_right, luatabaaot and man)
 		ui.set_visible(gui.freestand, luatabaaot)
 		ui.set_visible(gui.hideshots, luatabaaot)
 		ui.set_visible(gui.export, luatabaa)
 		ui.set_visible(gui.import, luatabaa)
+		ui.set_visible(gui.airstop, luatabaaot)
+		ui.set_visible(gui.airstopb, luatabaaot and airf)
 		ui.set_visible(gui.spinwhendead, luatabaaot)
+		ui.set_visible(gui.spinwhendeadspeed, luatabaaot and spins)
+	
 
 		for i, name in pairs(ctx.condition_names) do
 			local conditions = gui.conditions[name]
@@ -952,9 +1028,8 @@ do
 	end
 
 	def.antiaim = {
-		brute = 0,
-		brute_end = 0,
-		weapons = { 'Global', 'G3SG1 / SCAR-20', 'SSG 08', 'AWP', 'R8 Revolver', 'Desert Eagle', 'Pistol', 'Zeus', 'Rifle', 'Shotgun', 'SMG', 'Machine gun' },
+		ticks = 0,
+		--weapons = { 'Global', 'G3SG1 / SCAR-20', 'SSG 08', 'AWP', 'R8 Revolver', 'Desert Eagle', 'Pistol', 'Zeus', 'Rifle', 'Shotgun', 'SMG', 'Machine gun' },
 		off_while = function()
 			if not ui.get(gui.spinwhendead) then
 				return
@@ -988,11 +1063,19 @@ do
 		manual = function()
 			ui.set(gui.manual_left, 'On hotkey')
 			ui.set(gui.manual_right, 'On hotkey')
-	
+			ui.set(gui.manual_back, 'On hotkey')
+			ui.set(gui.manual_forward, 'On hotkey')
+			ui.set(gui.manual_reset, 'On hotkey')
+
+			if not ui.get(gui.manual_on) then
+				g_ctx.selected_manual = 0
+				return
+			end
+
 			if g_ctx.selected_manual == nil then
 				g_ctx.selected_manual = 0
 			end
-		
+
 			local left_pressed = ui.get(gui.manual_left)
 			if left_pressed and not g_ctx.left_pressed then
 				if g_ctx.selected_manual == 1 then
@@ -1001,7 +1084,7 @@ do
 					g_ctx.selected_manual = 1
 				end
 			end
-		
+
 			local right_pressed = ui.get(gui.manual_right)
 			if right_pressed and not g_ctx.right_pressed then
 				if g_ctx.selected_manual == 2 then
@@ -1010,18 +1093,64 @@ do
 					g_ctx.selected_manual = 2
 				end
 			end
+
+			local back_pressed = ui.get(gui.manual_back)
+			if back_pressed and not g_ctx.back_pressed then
+				if g_ctx.selected_manual == 3 then
+					g_ctx.selected_manual = 0
+				else
+					g_ctx.selected_manual = 3
+				end
+			end
+
+			local forward_pressed = ui.get(gui.manual_forward)
+			if forward_pressed and not g_ctx.forward_pressed then
+				if g_ctx.selected_manual == 4 then
+					g_ctx.selected_manual = 0
+				else
+					g_ctx.selected_manual = 4
+				end
+			end
+
+			local reset_pressed = ui.get(gui.manual_reset)
+			if reset_pressed and not g_ctx.reset_pressed then
+				if g_ctx.selected_manual == 5 then
+					g_ctx.selected_manual = 5
+				else
+					g_ctx.selected_manual = 0
+				end
+			end
 			
 			g_ctx.left_pressed = left_pressed
 			g_ctx.right_pressed = right_pressed
+			g_ctx.back_pressed = back_pressed
+			g_ctx.forward_pressed = forward_pressed
+			g_ctx.reset_pressed = reset_pressed
 		end,
 		freestand = function()
+			ctx.state = get_state()
+			if not ui.get(gui.conditions[ctx.state].override) then
+				ctx.state = 'Shared'
+			end
+			local conditions = gui.conditions[ctx.state]
+
 			local fs = ui.get(gui.freestand)
 			if g_ctx.selected_manual ~= 0 then
 				fs = false
 			end
 
-			ui.set(software.antiaim.angles.freestanding[2], 'always on')
-			ui.set(software.antiaim.angles.freestanding[1], fs)
+			if def.values.ticks > ui.get(conditions.defensive_start) and 
+				def.values.ticks < ui.get(conditions.defensive_end) and 
+				ui.get(conditions.defensive_builder) and 
+				ui.get(conditions.defensive_on) ~= 'Off' and 
+				def.antiaim:off_while() ~= 0 then
+
+				ui.set(software.antiaim.angles.freestanding[2], 'always on')
+				ui.set(software.antiaim.angles.freestanding[1], false)
+			else
+				ui.set(software.antiaim.angles.freestanding[2], 'always on')
+				ui.set(software.antiaim.angles.freestanding[1], fs)
+			end
 		end,
 		pitch = function()
 			ctx.state = get_state()
@@ -1090,8 +1219,8 @@ do
 					end
 				end
 				
-				if globals.tickcount() % 14 == 0 then
-					def.values.spinv2 = def.values.spinv2 + 25
+				if globals.tickcount() % 4 == 0 then
+					def.values.spinv2 = def.values.spinv2 + 40
 					if def.values.spinv2 > 180 then
 						def.values.spinv2 = -180
 					end
@@ -1111,7 +1240,7 @@ do
 				elseif val == 'Hidden V2' then
 					value = def.values.spinv2
 				elseif val == 'Hidden V3' then
-					value = def.values.spinv2 / 2
+					value = def.values.spinv2 * .5
 				end
 			
 				ui.set(software.antiaim.angles.desync[1], 'opposite')
@@ -1123,7 +1252,7 @@ do
 			else
 				if def.antiaim:off_while() == 0 then
 					yaw = 'spin'
-					yaw_value = 4
+					yaw_value = ui.get(gui.spinwhendeadspeed)
 					yawmodofs = 0
 					yaw_base = 'local view'
 					desync = 'off'
@@ -1142,6 +1271,18 @@ do
 				elseif g_ctx.selected_manual == 2 then
 					yaw = '180'
 					yaw_value = 90
+					yawmodofs = 0
+					yaw_base = 'local view'
+					desync = 'opposite'
+				elseif g_ctx.selected_manual == 3 then
+					yaw = '180'
+					yaw_value = 0
+					yawmodofs = 0
+					yaw_base = 'local view'
+					desync = 'opposite'
+				elseif g_ctx.selected_manual == 4 then
+					yaw = '180'
+					yaw_value = 180
 					yawmodofs = 0
 					yaw_base = 'local view'
 					desync = 'opposite'
@@ -1239,7 +1380,9 @@ do
 		fakelag = function()
 			ui.set( software.antiaim.fakelag.amount, ui.get( gui.fl_amount ))
 			ui.set( software.antiaim.fakelag.variance, ui.get( gui.fl_variance ))
-			if ui.get(gui.fl_break) > 1 then
+			if def.antiaim:off_while() == 0 then
+				ui.set( software.antiaim.fakelag.limit, 1 )
+			elseif ui.get(gui.fl_break) > 1 then
 				ui.set( software.antiaim.fakelag.limit,	events.random_int(ui.get( gui.fl_break ), ui.get( gui.fl_limit )))
 			else
 				ui.set( software.antiaim.fakelag.limit,	ui.get( gui.fl_limit ))
@@ -1304,6 +1447,20 @@ do
 			end
 	
 			return writefile(path, json.stringify(data))
+		end,
+		airstop = function(cmd)	
+			if ui.get(gui.airstop) then
+				if ui.get(gui.airstopb) then
+					if cmd.quick_stop then
+						if (globals.tickcount() - def.antiaim.ticks) > 3 then
+							cmd.in_speed = 1
+						end
+					else
+						def.antiaim.ticks = globals.tickcount()
+					end
+					render.indicator(230, 230, 230, 215, 'AS')
+				end
+			end
 		end,
 		fast_ladder = function(cmd)
 			if not ui.get(gui.ladder) then
@@ -1383,6 +1540,7 @@ do
 		def.antiaim:leg_movement()
 		def.antiaim:fakelag()
 		def.antiaim.fast_ladder(cmd)
+		def.antiaim.airstop(cmd)
 	end
 end
 
@@ -1452,6 +1610,12 @@ do
 		gui.indicators.manual2arrows = ui.new_checkbox(gui.aa,gui.aaim,gui.menuc..'Manual arrows')
 		gui.indicators.maincolor = ui.new_color_picker(gui.aa,gui.aaim,'Manual main color', 215, 215, 215)
 		gui.indicators.backcolor = ui.new_color_picker(gui.aa,gui.aaim,'Manual back color', 5, 5, 5, 0)
+		gui.indicators.name = ui.new_checkbox(gui.aa, gui.lag, gui.menuc..'Name esp')
+		gui.indicators.name_color = ui.new_color_picker(gui.aa,gui.lag,'Name color', ui.get(software.visuals.effects.name[2]))
+		gui.indicators.name_font = ui.new_combobox(gui.aa, gui.lag, '\n Name font', 'Small', 'Default', 'Bold')
+		gui.indicators.basf = ui.new_checkbox(gui.aa, gui.lag, gui.menuc..'Esp information')
+		gui.indicators.basf_color = ui.new_color_picker(gui.aa,gui.lag,'Esp information color', 215, 215, 215)
+		gui.indicators.basf_font = ui.new_combobox(gui.aa, gui.lag, '\n Esp information font', 'Small', 'Default', 'Bold')
 
 		local indicators = gui.indicators
 		ui.set_callback(indicators.indicator, function()
@@ -1505,7 +1669,7 @@ do
 		end
 			
 		local text_size = render.measure_text(fl, text)
-		x = x - text_size * offset / 2 + 5 * ctx.crosshair_indicator.scope
+		x = x - text_size * offset * .5 + 5 * ctx.crosshair_indicator.scope
 		
 		render.text(x, y, r, g, b, a, fl, opt, text)
 		
@@ -1525,7 +1689,7 @@ do
 			
 			local state = render.measure_text('d', get_state())
 			local asp = ui.get(gui.aspectratio)
-			ctx.anims.z = motion.interp(ctx.anims.z, state == gui.cur_state and ui.get(indicators.indicator), 0.05)
+			ctx.anims.z = motion.interp(ctx.anims.z, state == gui.cur_state and ui.get(indicators.indicator), 0.1)
 			ctx.anims.k = motion.interp(ctx.anims.k, ui.get(indicators.indicator), 0.01)
 			ctx.anims.s = motion.interp(ctx.anims.s, asp == gui.aspectr, 0.01)
 		
@@ -1615,7 +1779,7 @@ do
 					}
 				end
 
-				add_crosshair_text(g_ctx.screen[1] / 2, g_ctx.screen[2] / 2 + ctx.crosshair_indicator.y, clr[1], clr[2], clr[3], clr[4], opt, 0, text, alphaz)
+				add_crosshair_text(g_ctx.screen[1] * .5, g_ctx.screen[2] * .5 + ctx.crosshair_indicator.y, clr[1], clr[2], clr[3], clr[4], opt, 0, text, alphaz)
 				ctx.crosshair_indicator.binds[index].alpha = alpha
 				ctx.crosshair_indicator.binds[index].name = name
 				ctx.crosshair_indicator.binds[index].chars = chars
@@ -1636,15 +1800,15 @@ do
 				local r, g, b, a = ui.get(indicators.wmaincolor)
 				local name = 'antarctica recode'
 				local text_size = render.measure_text(opt, name:upper())
-				render.text(g_ctx.screen[1] / 2 - text_size / 2, g_ctx.screen[2] - 15, r, g, b, 215, opt, nil, name:upper())
+				render.text(g_ctx.screen[1] * .5 - text_size * .5, g_ctx.screen[2] - 15, r, g, b, 215, opt, nil, name:upper())
 		    else
 				local version = 'v2 release'
 				local name = 'antarctica'
 				local version_size = render.measure_text(opt, version:upper())
 				local text_size = render.measure_text(opt, name:upper())
-				render.text(g_ctx.screen[1] / 2 - version_size / 2, g_ctx.screen[2] - 30, 215, 215, 215, 255, opt, nil, 
+				render.text(g_ctx.screen[1] * .5 - version_size * .5, g_ctx.screen[2] - 30, 215, 215, 215, 255, opt, nil, 
 				def.gui.text(indicators.wbackcolor, indicators.wmaincolor, version:upper(), 2))
-				render.text(g_ctx.screen[1] / 2 - text_size / 2, g_ctx.screen[2] - 15, 215, 215, 215, 255, opt, nil, 
+				render.text(g_ctx.screen[1] * .5 - text_size * .5, g_ctx.screen[2] - 15, 215, 215, 215, 255, opt, nil, 
 				def.gui.text(indicators.wbackcolor, indicators.wmaincolor, name:upper(), 2))
 		    end
 		end,
@@ -1662,7 +1826,7 @@ do
 			elseif ui.get(indicators.damage_indicator_font) == 'Bold' then
 				opt = 'b'
 			end
-			render.text(g_ctx.screen[1] / 2 + 5, g_ctx.screen[2] / 2 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, math.floor(ui.get(software.rage.binds.minimum_damage_override[3]))) --* ctx.anims.t
+			render.text(g_ctx.screen[1] * .5 + 5, g_ctx.screen[2] * .5 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, math.floor(ui.get(software.rage.binds.minimum_damage_override[3]))) --* ctx.anims.t
 		end,
 		manual_arrows = function()
 			local indicators = gui.indicators
@@ -1672,8 +1836,8 @@ do
 			local re = render.measure_text('+', '⮞')
 
 			render.text(
-			g_ctx.selected_manual == 2 and g_ctx.screen[1] / 2 - re / 2 + 58 or g_ctx.screen[1] / 2 - re / 2 + 58, 
-			g_ctx.screen[2] / 2 - re + 2, 
+			g_ctx.selected_manual == 2 and g_ctx.screen[1] * .5 - re * .5 + 58 or g_ctx.screen[1] * .5 - re * .5 + 58, 
+			g_ctx.screen[2] * .5 - re + 2, 
 			g_ctx.selected_manual == 2 and r or r12, 
 			g_ctx.selected_manual == 2 and g or g12, 
 			g_ctx.selected_manual == 2 and b or b12, 
@@ -1682,8 +1846,8 @@ do
 			nil,
 			'⮞')
 			render.text(
-			g_ctx.selected_manual == 1 and g_ctx.screen[1] / 2 - le / 2 - 55 or g_ctx.screen[1] / 2 - le / 2 - 55, 
-			g_ctx.screen[2] / 2 - le + 2,
+			g_ctx.selected_manual == 1 and g_ctx.screen[1] * .5 - le * .5 - 55 or g_ctx.screen[1] * .5 - le * .5 - 55, 
+			g_ctx.screen[2] * .5 - le + 2,
 			g_ctx.selected_manual == 1 and r or r12, 
 			g_ctx.selected_manual == 1 and g or g12, 
 			g_ctx.selected_manual == 1 and b or b12, 
@@ -1691,6 +1855,59 @@ do
 			'+',
 			nil,
 			'⮜')
+		end,
+		esp_name = function()
+			local indicators = gui.indicators
+            for i = 1, globals.maxplayers() do
+				name = entity.get_player_name(i)
+				local x1, y1, x2, y2, a2 = entity.get_bounding_box(i)
+				local top = ''
+				if lua.ba and lua.sf then
+					top = 'ba & sp'
+				elseif lua.ba then
+					top = 'ba'
+				elseif lua.sf then
+					top = 'sp'
+				else
+					top = ''
+				end
+				if y1 ~= nil and x1 ~= nil then
+					local x_center = x1 + (x2 - x1) / 2
+					if ui.get(gui.indicators.basf) then
+						local opt = ''
+						if ui.get(indicators.basf_font) == 'Small' then
+							opt = 'c-'
+							top = top:upper()
+						elseif ui.get(indicators.basf_font) == 'Default' then
+							opt = 'c'
+						elseif ui.get(indicators.basf_font) == 'Bold' then
+							opt = 'cb'
+						end
+						r, g, b, a = ui.get(indicators.basf_color)
+						render.text(x_center, y1 - 17, r, g, b, a * a2, opt, nil, top)
+					end
+					if ui.get(gui.indicators.name) then
+						local opt = ''
+						if ui.get(indicators.name_font) == 'Small' then
+							opt = 'c-'
+							name = entity.get_player_name(i):upper()
+						elseif ui.get(indicators.name_font) == 'Default' then
+							opt = 'c'
+						elseif ui.get(indicators.name_font) == 'Bold' then
+							opt = 'cb'
+						end
+						r, g, b, a = ui.get(indicators.name_color)
+						render.text(x_center, y1 - 7, r, g, b, a * a2, opt, nil, name)
+					end
+				end
+			end
+		end,
+		indictor_call = function()
+			if ui.get(gui.airstop) then
+				if ui.get(gui.airstopb) then
+					render.indicator(230, 230, 230, 230, 'AS')
+				end
+			end
 		end
 	}
 
@@ -1704,11 +1921,93 @@ do
 		def.visuals:manual_arrows()
 		def.visuals:watermark()
 		def.visuals:damage_indicator()
+		def.visuals:esp_name()
+		def.visuals:indictor_call()
 	end
 end
 
 do
 	local ctx = {}
+
+	function corrections.init()
+		gui.corrections = {}
+		gui.corrections.enable_pl = ui.new_checkbox(gui.aa, gui.aaim, 'Enable rage modifier')
+
+		gui.corrections.overb_pl = ui.new_combobox(gui.aa, gui.aaim, 'Override prefer body aim', '-', 'Off', 'On', 'Force')
+		gui.corrections.overbs_pl = ui.new_multiselect(gui.aa, gui.aaim, '\n When bs_pl?', 'After misses', 'HP')
+		gui.corrections.misses_pl = ui.new_slider(gui.aa, gui.aaim, '\n After misses b', 1, 6, 1, true, 'x')
+		gui.corrections.hp_pl = ui.new_slider(gui.aa, gui.aaim, '\n HP b', 1, 92, 50, true, 'hp')
+
+		gui.corrections.oversf_pl = ui.new_combobox(gui.aa, gui.aaim, 'Override safe point', '-', 'Off', 'On')
+		gui.corrections.oversfs_pl = ui.new_multiselect(gui.aa, gui.aaim, '\n When sf_pl?', 'After misses', 'HP')
+		gui.corrections.sfmisses_pl = ui.new_slider(gui.aa, gui.aaim, '\n After misses sf', 1, 6, 1, true, 'x')
+		gui.corrections.sfhp_pl = ui.new_slider(gui.aa, gui.aaim, '\n HP sf', 1, 92, 50, true, 'hp')
+	end
+
+	local misses = {}
+
+	events.set_event_callback('aim_miss', function(enemy) 
+		if enemy.reason ~= '?' then
+			return
+		end
+		if not misses[enemy.target] then
+			misses[enemy.target] = 0
+		end
+		misses[enemy.target] = misses[enemy.target] + 1
+	end)
+	
+	events.set_event_callback('player_connect', function(enemy)
+		misses[events.userid_to_entindex(enemy.userid)] = 0
+	end)
+
+	events.set_event_callback('round_end', function(enemy)
+		misses[events.userid_to_entindex(enemy.userid)] = 0
+	end)
+
+	events.set_event_callback('player_death', function(enemy)
+		misses[events.userid_to_entindex(enemy.userid)] = 0
+	end)
+
+	body_safe = function()
+		if not entity.is_alive(g_ctx.lp) then
+			return
+		end
+		local enemies = entity.get_players(true)
+	
+		for i, enemy in ipairs(enemies) do
+			if not misses[enemy] then
+				misses[enemy] = 0
+			end
+
+			local hp_pl = entity.get_prop(enemy, 'm_iHealth')
+
+
+			local oif = gui.select(ui.get(gui.corrections.overbs_pl), 'HP') and hp_pl < ui.get(gui.corrections.hp_pl) and ui.get(gui.corrections.enable_pl)
+			local aif = gui.select(ui.get(gui.corrections.overbs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.misses_pl) and ui.get(gui.corrections.enable_pl)
+			local bb = ui.get(gui.corrections.overb_pl)
+
+			if oif or aif then
+				plist.set(enemy, 'Override prefer body aim', bb)
+				lua.ba = true and bb ~= '-'
+			else
+				plist.set(enemy, 'Override prefer body aim', '-')
+				lua.ba = false
+			end
+
+			local soif = gui.select(ui.get(gui.corrections.oversfs_pl), 'HP') and hp_pl < ui.get(gui.corrections.sfhp_pl) and ui.get(gui.corrections.enable_pl)
+			local saif = gui.select(ui.get(gui.corrections.oversfs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.sfmisses_pl) and ui.get(gui.corrections.enable_pl)
+
+			local sfb = ui.get(gui.corrections.oversf_pl)
+
+			if soif or saif then
+				plist.set(enemy, 'Override safe point', sfb)
+				lua.sf = true and sfb ~= '-'
+			else
+				plist.set(enemy, 'Override safe point', '-')
+				lua.sf = false
+			end
+		end
+	end
 
 	def.corr = {
 		peeking = function()
@@ -1741,14 +2040,14 @@ do
 	    end,
 		fix_doubletap = function()
 			local tickcount = globals.tickcount()
-			local m_nTickBase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
+			local tickbase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
 			local weapon = entity.get_player_weapon(g_ctx.lp)
 			local m_flNextPrimaryAttack = entity.get_prop(weapon, 'm_flNextPrimaryAttack')
 
-			local dt = tickcount > m_nTickBase
+			local exploit = tickcount > tickbase
 
 			if ui.get(software.rage.binds.double_tap[1]) and ui.get(software.rage.binds.double_tap[2]) and m_flNextPrimaryAttack < globals.curtime() - 0.2 and not g_ctx.grtck and ui.get(gui.menu.fixdt) then
-				ui.set(software.rage.binds.enabled[1], dt)
+				ui.set(software.rage.binds.enabled[1], exploit)
 			else
 				ui.set(software.rage.binds.enabled[1], true)
 			end
@@ -1762,7 +2061,7 @@ do
 			local conditions = gui.conditions[ctx.state]
 			if not ui.get(software.rage.binds.double_tap[2]) then
 				return
-			end		
+			end
 			if ui.get(conditions.defensive_on) == 'Always' then
 				cmd.force_defensive = true
 			elseif def.corr:peeking() and ui.get(conditions.defensive_on) == 'Peek' then
@@ -1784,7 +2083,7 @@ do
 
 		local group = hitgroup_names[e.hitgroup + 1] or '?'
 		motion.push(string.format('Miss %s in %s due to %s in %d hitchance', entity.get_player_name(e.target), group, e.reason, math.floor(e.hit_chance + 0.5)), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-		client.log(string.format('Miss %s in %s due to %s in %d hitchance', entity.get_player_name(e.target), group, e.reason, math.floor(e.hit_chance + 0.5)))
+		client.color_log(r, g, b, string.format('Miss %s in %s due to %s in %d hitchance', entity.get_player_name(e.target), group, e.reason, math.floor(e.hit_chance + 0.5)))
 	end)
 
 	events.set_event_callback('aim_fire', function(e)
@@ -1800,12 +2099,14 @@ do
 			e.high_priority and 'high_priority' or ''
 		}
 
+		backtrack = globals.tickcount() - e.tick
+
 		local r, g, b, a = ui.get(gui.menu.regcolor)
 		gui.regcol = def.gui:hex_label({r, g, b, a})
 	
 		local group = hitgroup_names[e.hitgroup + 1] or '?'
-		motion.push(string.format('Registered %s in %s for %d damage in %d hitchance and%2d backtrack (%s)', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), toticks(e.backtrack), table.concat(flags)), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-		client.log(string.format('Registered %s in %s for %d damage in %d hitchance and%2d backtrack (%s)', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), toticks(e.backtrack), table.concat(flags)))
+		motion.push(string.format('Registered %s in %s for %d damage in %d hitchance and %d backtrack (%d ms) - %s', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), backtrack, events.real_latency(), table.concat(flags)), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
+		client.color_log(r, g, b, string.format('Registered %s in %s for %d damage in %d hitchance and %d backtrack (%d ms) - %s', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), backtrack, events.real_latency(), table.concat(flags)))
 	end)
 
 	events.set_event_callback('aim_hit', function(e)
@@ -1817,7 +2118,7 @@ do
 
 		local group = hitgroup_names[e.hitgroup + 1] or '?'
 		motion.push(string.format('Hit %s in the %s for %d damage (%d health remaining)', entity.get_player_name(e.target), group, e.damage, entity.get_prop(e.target, 'm_iHealth')), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-		client.log(string.format('Hit %s in the %s for %d damage (%d health remaining)', entity.get_player_name(e.target), group, e.damage, entity.get_prop(e.target, 'm_iHealth')))
+		client.color_log(r, g, b, string.format('Hit %s in the %s for %d damage (%d health remaining)', entity.get_player_name(e.target), group, e.damage, entity.get_prop(e.target, 'm_iHealth')))
 
 	end)
 
@@ -1841,7 +2142,7 @@ do
 			end
 
 			motion.push(string.format('%s %s for %i damage (%i remaining)', weapon_to_verb[e.weapon], target_name, e.dmg_health, e.health), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-			client.log(string.format('%s %s for %i damage (%i remaining)', weapon_to_verb[e.weapon], target_name, e.dmg_health, e.health))
+			client.color_log(r, g, b, string.format('%s %s for %i damage (%i remaining)', weapon_to_verb[e.weapon], target_name, e.dmg_health, e.health))
 		end
 	end)
 
@@ -1857,12 +2158,14 @@ end
 do
 	function cwar.createmove()
 		cvar.sv_maxusrcmdprocessticks:set_int(18)
+		cvar.cl_showerror:set_int(0)
 		ui.set(software.rage.binds.usercmd, 18)
 	end
 
 	function cwar.shutdown()
 		cvar.sv_maxusrcmdprocessticks:set_int(16)
 		ui.set(software.rage.binds.usercmd, 16)
+		cvar.cl_showerror:set_int(1)
 		cvar.cam_idealdist:set_float(ui.get(gui.thirdperson))
 		cvar.r_aspectratio:set_float(0.0)
 		ui.set(software.visuals.effects.fov, ui.get(gui.fov))
@@ -1874,12 +2177,14 @@ do
 	gui.init()
 	builder.init()
 	indicators.init()
+	corrections.init()
 
 	events.set_event_callback('paint', g_ctx.render)
 	events.set_event_callback('paint_ui', motion.logs)
 	events.set_event_callback('paint_ui', gui.render)
 	events.set_event_callback('paint_ui', indicators.render)
 	events.set_event_callback('paint_ui', builder.render)
+	events.set_event_callback('net_update_end', body_safe)
 
 	events.set_event_callback('run_command', def.values.run)
 	events.set_event_callback('setup_command', builder.setup_createmove)
