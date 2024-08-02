@@ -45,8 +45,6 @@ end
 local lua = {}
 
 lua.sound = 'ui/csgo_ui_contract_type1'
-lua.sf = false
-lua.ba = false
 lua.network = panorama.open().SteamOverlayAPI.OpenExternalBrowserURL
 cvar.play:invoke_callback(lua.sound)
 
@@ -617,6 +615,8 @@ do
 			ui.set_visible(gui.corrections.misses_pl, constructor_pl and overbody and gui.select(po_pl, 'After misses'))
 			ui.set_visible(gui.corrections.hp_pl, constructor_pl and overbody and gui.select(po_pl, 'HP'))
 			ui.set_visible(gui.indicators.basf, constructor_pl)
+			ui.set_enabled(gui.indicators.basf, false)
+			ui.set(gui.indicators.basf, false)
 			ui.set_visible(gui.indicators.basf_color, constructor_pl and basf)
 			ui.set_visible(gui.indicators.basf_font, constructor_pl and basf)
 
@@ -666,6 +666,74 @@ do
 		local yaw = animstate.eye_angles_y - animstate.goal_feet_yaw
 		yaw = motion.normalize_yaw_acid(yaw)
 		return yaw
+	end
+
+	local misses = {}
+
+	events.set_event_callback('aim_miss', function(enemy) 
+		if enemy.reason ~= '?' then
+			return
+		end
+		if not misses[enemy.target] then
+			misses[enemy.target] = 0
+		end
+		misses[enemy.target] = misses[enemy.target] + 1
+	end)
+	
+	events.set_event_callback('player_connect', function(enemy)
+		misses[events.userid_to_entindex(enemy.userid)] = 0
+	end)
+
+	events.set_event_callback('round_end', function(enemy)
+		misses[events.userid_to_entindex(enemy.userid)] = 0
+	end)
+
+	events.set_event_callback('player_death', function(enemy)
+		misses[events.userid_to_entindex(enemy.userid)] = 0
+	end)
+
+	body_safe = function()
+		if not entity.is_alive(g_ctx.lp) then
+			return
+		end
+		local enemies = entity.get_players(true)
+	
+		for i, enemy in ipairs(enemies) do
+			if not misses[enemy] then
+				misses[enemy] = 0
+			end
+
+			lua._pl = enemy
+			lua.hp_pl = entity.get_prop(lua._pl, 'm_iHealth')
+
+
+			local oif = gui.select(ui.get(gui.corrections.overbs_pl), 'HP') and lua.hp_pl < ui.get(gui.corrections.hp_pl) and ui.get(gui.corrections.enable_pl)
+			local aif = gui.select(ui.get(gui.corrections.overbs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.misses_pl) and ui.get(gui.corrections.enable_pl)
+			local bb = ui.get(gui.corrections.overb_pl)
+
+			if oif or aif then
+				plist.set(lua._pl, 'Override prefer body aim', bb)
+				lua.ba = true and bb ~= '-'
+			else
+				plist.set(lua._pl, 'Override prefer body aim', '-')
+				lua.ba = false
+			end
+
+			local soif = gui.select(ui.get(gui.corrections.oversfs_pl), 'HP') and lua.hp_pl < ui.get(gui.corrections.sfhp_pl) and ui.get(gui.corrections.enable_pl)
+			local saif = gui.select(ui.get(gui.corrections.oversfs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.sfmisses_pl) and ui.get(gui.corrections.enable_pl)
+
+			local sfb = ui.get(gui.corrections.oversf_pl)
+
+			if soif or saif then
+				plist.set(lua._pl, 'Override safe point', sfb)
+				lua.sf = true and sfb ~= '-'
+			else
+				plist.set(lua._pl, 'Override safe point', '-')
+				lua.sf = false
+			end
+
+			return enemy
+		end
 	end
 
 	def.values = {
@@ -1780,7 +1848,7 @@ do
 				end
 
 				add_crosshair_text(g_ctx.screen[1] * .5, g_ctx.screen[2] * .5 + ctx.crosshair_indicator.y, clr[1], clr[2], clr[3], clr[4], opt, 0, text, alphaz)
-				ctx.crosshair_indicator.binds[index].alpha = alpha
+				ctx.crosshair_indicator.binds[index].alpha = alphaz
 				ctx.crosshair_indicator.binds[index].name = name
 				ctx.crosshair_indicator.binds[index].chars = chars
 				ctx.crosshair_indicator.binds[index].color = r, g, b, a
@@ -1858,39 +1926,47 @@ do
 		end,
 		esp_name = function()
 			local indicators = gui.indicators
-            for i = 1, globals.maxplayers() do
-				name = entity.get_player_name(i)
-				local x1, y1, x2, y2, a2 = entity.get_bounding_box(i)
-				local top = ''
-				if lua.ba and lua.sf then
-					top = 'ba & sp'
-				elseif lua.ba then
-					top = 'ba'
-				elseif lua.sf then
-					top = 'sp'
-				else
-					top = ''
-				end
+			--local enemies = entity.get_players(true)
+	
+			--for i, enemy in pairs(enemies) do
+            for enemy = 1, globals.maxplayers() do
+				name = entity.get_player_name(enemy)
+				local x1, y1, x2, y2, a2 = entity.get_bounding_box(enemy)
+				--local top = ''
+				--if enemy == lua._pl then
+				--	if lua.ba and lua.sf then
+				--		top = 'ba & sp'
+				--	elseif lua.ba then
+				--		top = 'ba'
+				--	elseif lua.sf then
+				--		top = 'sp'
+				--	else
+				--		top = ''
+				---	end
+				--else
+				--	top = ''
+				--end
+
 				if y1 ~= nil and x1 ~= nil then
 					local x_center = x1 + (x2 - x1) / 2
-					if ui.get(gui.indicators.basf) then
-						local opt = ''
-						if ui.get(indicators.basf_font) == 'Small' then
-							opt = 'c-'
-							top = top:upper()
-						elseif ui.get(indicators.basf_font) == 'Default' then
-							opt = 'c'
-						elseif ui.get(indicators.basf_font) == 'Bold' then
-							opt = 'cb'
-						end
-						r, g, b, a = ui.get(indicators.basf_color)
-						render.text(x_center, y1 - 17, r, g, b, a * a2, opt, nil, top)
-					end
+					--if ui.get(gui.indicators.basf) then
+					--	local opt = ''
+					--	if ui.get(indicators.basf_font) == 'Small' then
+					--		opt = 'c-'
+					--		top = top:upper()
+					--	elseif ui.get(indicators.basf_font) == 'Default' then
+					--		opt = 'c'
+					--	elseif ui.get(indicators.basf_font) == 'Bold' then
+					--		opt = 'cb'
+					--	end
+					--	r, g, b, a = ui.get(indicators.basf_color)
+					--	render.text(x_center, y1 - 17, r, g, b, a * a2, opt, nil, top)
+					--end
 					if ui.get(gui.indicators.name) then
 						local opt = ''
 						if ui.get(indicators.name_font) == 'Small' then
 							opt = 'c-'
-							name = entity.get_player_name(i):upper()
+							name = entity.get_player_name(enemy):upper()
 						elseif ui.get(indicators.name_font) == 'Default' then
 							opt = 'c'
 						elseif ui.get(indicators.name_font) == 'Bold' then
@@ -1942,71 +2018,6 @@ do
 		gui.corrections.oversfs_pl = ui.new_multiselect(gui.aa, gui.aaim, '\n When sf_pl?', 'After misses', 'HP')
 		gui.corrections.sfmisses_pl = ui.new_slider(gui.aa, gui.aaim, '\n After misses sf', 1, 6, 1, true, 'x')
 		gui.corrections.sfhp_pl = ui.new_slider(gui.aa, gui.aaim, '\n HP sf', 1, 92, 50, true, 'hp')
-	end
-
-	local misses = {}
-
-	events.set_event_callback('aim_miss', function(enemy) 
-		if enemy.reason ~= '?' then
-			return
-		end
-		if not misses[enemy.target] then
-			misses[enemy.target] = 0
-		end
-		misses[enemy.target] = misses[enemy.target] + 1
-	end)
-	
-	events.set_event_callback('player_connect', function(enemy)
-		misses[events.userid_to_entindex(enemy.userid)] = 0
-	end)
-
-	events.set_event_callback('round_end', function(enemy)
-		misses[events.userid_to_entindex(enemy.userid)] = 0
-	end)
-
-	events.set_event_callback('player_death', function(enemy)
-		misses[events.userid_to_entindex(enemy.userid)] = 0
-	end)
-
-	body_safe = function()
-		if not entity.is_alive(g_ctx.lp) then
-			return
-		end
-		local enemies = entity.get_players(true)
-	
-		for i, enemy in ipairs(enemies) do
-			if not misses[enemy] then
-				misses[enemy] = 0
-			end
-
-			local hp_pl = entity.get_prop(enemy, 'm_iHealth')
-
-
-			local oif = gui.select(ui.get(gui.corrections.overbs_pl), 'HP') and hp_pl < ui.get(gui.corrections.hp_pl) and ui.get(gui.corrections.enable_pl)
-			local aif = gui.select(ui.get(gui.corrections.overbs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.misses_pl) and ui.get(gui.corrections.enable_pl)
-			local bb = ui.get(gui.corrections.overb_pl)
-
-			if oif or aif then
-				plist.set(enemy, 'Override prefer body aim', bb)
-				lua.ba = true and bb ~= '-'
-			else
-				plist.set(enemy, 'Override prefer body aim', '-')
-				lua.ba = false
-			end
-
-			local soif = gui.select(ui.get(gui.corrections.oversfs_pl), 'HP') and hp_pl < ui.get(gui.corrections.sfhp_pl) and ui.get(gui.corrections.enable_pl)
-			local saif = gui.select(ui.get(gui.corrections.oversfs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.sfmisses_pl) and ui.get(gui.corrections.enable_pl)
-
-			local sfb = ui.get(gui.corrections.oversf_pl)
-
-			if soif or saif then
-				plist.set(enemy, 'Override safe point', sfb)
-				lua.sf = true and sfb ~= '-'
-			else
-				plist.set(enemy, 'Override safe point', '-')
-				lua.sf = false
-			end
-		end
 	end
 
 	def.corr = {
