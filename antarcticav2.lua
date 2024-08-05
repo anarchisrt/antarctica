@@ -2019,7 +2019,7 @@ do
 				local text = { }
 		
 				local body_aim_value = lua.esp_body_aim[player]
-				local safe_point_value = lua.esp_body_aim[player]
+				local safe_point_value = lua.esp_safe_point[player]
 		
 				if body_aim_value then
 					table.insert(text, 'ba')
