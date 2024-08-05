@@ -1869,7 +1869,7 @@ do
 				local r, g, b, a = ui.get(indicators.wmaincolor)
 				local name = 'antarctica recode'
 				local text_size = render.measure_text(opt, name:upper())
-				render.text(g_ctx.screen[1] * .5 - text_size * .5, g_ctx.screen[2] - 15, r, g, b, 215, opt, nil, name:upper())
+				render.text(g_ctx.screen[1] * .5 - text_size * .5, g_ctx.screen[2] - 15, r, g, b, 215, opt, nil, ui.get(indicators.watermark_font) == 'Small' and name:upper() or name)
 		    else
 				local version = 'v2 release'
 				local name = 'antarctica'
