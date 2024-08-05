@@ -13,6 +13,7 @@ local events = client
 local ffi = require 'ffi'
 local vector = require 'vector'
 local entitys = require 'gamesense/entity'
+local weapons = require 'gamesense/csgo_weapons'
 
 local VGUI_System010 =  events.create_interface('vgui2.dll', 'VGUI_System010')
 local VGUI_System = ffi.cast(ffi.typeof('void***'), VGUI_System010)
@@ -43,6 +44,8 @@ ffi.cdef [[
 end
 
 local lua = {}
+lua.esp_body_aim = { }
+lua.esp_safe_point = { }
 
 lua.sound = 'ui/csgo_ui_contract_type1'
 lua.network = panorama.open().SteamOverlayAPI.OpenExternalBrowserURL
@@ -615,8 +618,8 @@ do
 			ui.set_visible(gui.corrections.misses_pl, constructor_pl and overbody and gui.select(po_pl, 'After misses'))
 			ui.set_visible(gui.corrections.hp_pl, constructor_pl and overbody and gui.select(po_pl, 'HP'))
 			ui.set_visible(gui.indicators.basf, constructor_pl)
-			ui.set_enabled(gui.indicators.basf, false)
-			ui.set(gui.indicators.basf, false)
+			--ui.set_enabled(gui.indicators.basf, false)
+			--ui.set(gui.indicators.basf, false)
 			ui.set_visible(gui.indicators.basf_color, constructor_pl and basf)
 			ui.set_visible(gui.indicators.basf_font, constructor_pl and basf)
 
@@ -696,43 +699,32 @@ do
 		if not entity.is_alive(g_ctx.lp) then
 			return
 		end
+	
 		local enemies = entity.get_players(true)
 	
-		for i, enemy in ipairs(enemies) do
+		for i = 1, #enemies do
+			local enemy = enemies[i]
+	
 			if not misses[enemy] then
 				misses[enemy] = 0
 			end
-
-			lua._pl = enemy
-			lua.hp_pl = entity.get_prop(lua._pl, 'm_iHealth')
-
-
-			local oif = gui.select(ui.get(gui.corrections.overbs_pl), 'HP') and lua.hp_pl < ui.get(gui.corrections.hp_pl) and ui.get(gui.corrections.enable_pl)
-			local aif = gui.select(ui.get(gui.corrections.overbs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.misses_pl) and ui.get(gui.corrections.enable_pl)
-			local bb = ui.get(gui.corrections.overb_pl)
-
-			if oif or aif then
-				plist.set(lua._pl, 'Override prefer body aim', bb)
-				lua.ba = true and bb ~= '-'
-			else
-				plist.set(lua._pl, 'Override prefer body aim', '-')
-				lua.ba = false
-			end
-
-			local soif = gui.select(ui.get(gui.corrections.oversfs_pl), 'HP') and lua.hp_pl < ui.get(gui.corrections.sfhp_pl) and ui.get(gui.corrections.enable_pl)
-			local saif = gui.select(ui.get(gui.corrections.oversfs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.sfmisses_pl) and ui.get(gui.corrections.enable_pl)
-
-			local sfb = ui.get(gui.corrections.oversf_pl)
-
-			if soif or saif then
-				plist.set(lua._pl, 'Override safe point', sfb)
-				lua.sf = true and sfb ~= '-'
-			else
-				plist.set(lua._pl, 'Override safe point', '-')
-				lua.sf = false
-			end
-
-			return enemy
+	
+			local health = entity.get_prop(enemy, 'm_iHealth')
+	
+			local hp_body_check = gui.select(ui.get(gui.corrections.overbs_pl), 'HP') and health < ui.get(gui.corrections.hp_pl) and ui.get(gui.corrections.enable_pl)
+			local miss_body_check = gui.select(ui.get(gui.corrections.overbs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.misses_pl) and ui.get(gui.corrections.enable_pl)
+	
+			local hp_safe_check = gui.select(ui.get(gui.corrections.oversfs_pl), 'HP') and health < ui.get(gui.corrections.sfhp_pl) and ui.get(gui.corrections.enable_pl)
+			local miss_safe_check = gui.select(ui.get(gui.corrections.oversfs_pl), 'After misses') and misses[enemy] >= ui.get(gui.corrections.sfmisses_pl) and ui.get(gui.corrections.enable_pl)
+	
+			local body_aim = (hp_body_check or miss_body_check) and ui.get(gui.corrections.overb_pl) or '-'
+			local safe_point = (hp_safe_check or miss_safe_check) and ui.get(gui.corrections.oversf_pl) or '-'
+	
+			plist.set(enemy, 'Override prefer body aim', body_aim)
+			plist.set(enemy, 'Override safe point', safe_point)
+	
+			lua.esp_body_aim[enemy] = body_aim ~= '-'
+			lua.esp_safe_point[enemy] = safe_point ~= '-'
 		end
 	end
 
@@ -809,8 +801,8 @@ do
 		gui.ladder = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Fast ladder')
 		gui.fl_amount = ui.new_combobox(gui.aa, gui.aaim, gui.menuc..'Amount', 'Dynamic', 'Maximum', 'Fluctuate')
 		gui.fl_variance = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Variance', 0, 100, 0, true, '%')
-		gui.fl_limit = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Limit', 1, ui.get(software.rage.binds.usercmd) - 1, 15, true, 't', 1, ctx.amount)
-		gui.fl_break = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Break', 1, ui.get(software.rage.binds.usercmd) - 1, 0, true, 't', 1, ctx.amount)
+		gui.fl_limit = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Limit', 1, ui.get(software.rage.binds.usercmd), 15, true, 't', 1, ctx.amount)
+		gui.fl_break = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Break', 1, ui.get(software.rage.binds.usercmd), 0, true, 't', 1, ctx.amount)
 		gui.ot_leg = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Leg movement', 'Off', 'Never slide', 'Always slide')
 		gui.manual_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Manual enable')
 		gui.manual_left = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Left')
@@ -1069,30 +1061,31 @@ do
 		end
 		
 		if not ctx.onground then
-			if entity.get_prop(g_ctx.lp, 'm_flDuckAmount') == 1 then
+			if entity.get_prop(g_ctx.lp, 'm_flDuckAmount') == 1 and ui.get(gui.conditions['Air Duck'].override) then
 				return 'Air Duck'
 			end
 	
-			return 'Air'
+			return ui.get(gui.conditions['Air'].override) and 'Air' or 'Shared'
 		end
 		
 		if entity.get_prop(g_ctx.lp, 'm_flDuckAmount') == 1 or ui.get(software.antiaim.other.fakeduck) then
-			if speed > 5 then
+			if speed > 5 and ui.get(gui.conditions['Duck Moving'].override) then
 				return 'Duck Moving'
 			end
 	
-			return 'Duck'
+			return ui.get(gui.conditions['Duck'].override) and 'Duck' or 'Shared'
 		end
 	
 		if speed > 5 then
-			if ui.get(software.antiaim.other.slide[2]) then
+			if ui.get(software.antiaim.other.slide[2]) and ui.get(gui.conditions['Slow Moving'].override) then
 				return 'Slow Moving'
 			end
 
-			return 'Moving'
+			return ui.get(gui.conditions['Moving'].override) and 'Moving' or 'Shared'
 		end
 	
-		return 'Stand'
+
+		return ui.get(gui.conditions['Stand'].override) and 'Stand' or 'Shared'
 	end
 
 	def.antiaim = {
@@ -1286,15 +1279,16 @@ do
 						def.values.spin = -180
 					end
 				end
-				
-				if globals.tickcount() % 4 == 0 then
+
+				if def.values.ticks == 3 then
 					def.values.spinv2 = def.values.spinv2 + 40
 					if def.values.spinv2 > 180 then
 						def.values.spinv2 = -180
 					end
 				end
-			
+
 				local value = 0
+				local bob = 0
 				local val = ui.get(conditions.defensive_yaw)
 				if val == '2 Way' then
 					value = def.values.packets % 2 == 0 and 90 or -90
@@ -1308,10 +1302,15 @@ do
 				elseif val == 'Hidden V2' then
 					value = def.values.spinv2
 				elseif val == 'Hidden V3' then
-					value = def.values.spinv2 * .5
+					if def.values.ticks == 6 then
+						value = def.values.packets % 2 == 0 and 90 or -90
+					else
+						value = 0
+					end
+					bob = def.values.ticks == 6 and 'opposite' or 'off'
 				end
-			
-				ui.set(software.antiaim.angles.desync[1], 'opposite')
+
+				ui.set(software.antiaim.angles.desync[1], val == 'Hidden V3' and bob or 'opposite')
 				ui.set(software.antiaim.angles.desync[2], 1)
 				ui.set(software.antiaim.angles.freestanding_body_yaw, true)
 				ui.set(software.antiaim.angles.yaw_base, 'at targets')
@@ -1509,22 +1508,13 @@ do
 				cvar.play:invoke_callback('ui/csgo_ui_contract_type1')
 			end)
 		end,
-		writedfile = function(path, data)
-			if not data or type(path) ~= 'string' then
-				return
-			end
-	
-			return writefile(path, json.stringify(data))
-		end,
 		airstop = function(cmd)	
 			if ui.get(gui.airstop) then
 				if ui.get(gui.airstopb) then
 					if cmd.quick_stop then
-						if (globals.tickcount() - def.antiaim.ticks) > 3 then
+						if not g_ctx.grtck then
 							cmd.in_speed = 1
 						end
-					else
-						def.antiaim.ticks = globals.tickcount()
 					end
 					render.indicator(230, 230, 230, 215, 'AS')
 				end
@@ -1549,7 +1539,7 @@ do
 
 			if throw ~= nil and throw ~= 0 then
 				return
-			end	
+			end
 
 			if cmd.forwardmove > 0 then
 				if cmd.pitch < 45 then
@@ -1635,6 +1625,7 @@ do
 		gui.indicators = {}
 		gui.aspectr = 0
 		gui.cur_state = 0
+		gui.doubletap = ''
 		gui.current_state = 'none'
 		ctx.anims = {
 			a = 0,
@@ -1737,7 +1728,7 @@ do
 		end
 			
 		local text_size = render.measure_text(fl, text)
-		x = x - text_size * offset * .5 + 5 * ctx.crosshair_indicator.scope
+		x = x - text_size * offset * .5 + 20 * ctx.crosshair_indicator.scope
 		
 		render.text(x, y, r, g, b, a, fl, opt, text)
 		
@@ -1748,7 +1739,19 @@ do
 		interlerpfuncs = function()
 			backup.visual = {}
 			local indicators = gui.indicators
-			ctx.anims.f = motion.interp(ctx.anims.f, entity.get_prop(g_ctx.lp, 'm_bIsScoped'), 0.05)
+			local tickcount = globals.tickcount()
+			local tickbase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
+			local exploit = tickcount > tickbase
+			local grenade = false
+			local weapon = entity.get_player_weapon(g_ctx.lp)
+			if weapon ~= nil then
+                local weaponi = weapons(weapon)
+				if weaponi.weapon_type_int == 9 then
+					grenade = true
+				end
+			end
+
+			ctx.anims.l = motion.interp(ctx.anims.l, grenade, 0.1)
 			ctx.anims.c = motion.interp(ctx.anims.c, entity.get_prop(g_ctx.lp, 'm_bIsScoped'), 0.1)
 			ctx.anims.n = motion.interp(ctx.anims.n, entity.get_prop(g_ctx.lp, 'm_bResumeZoom'), 0.1)
 			ctx.anims.d = motion.interp(ctx.anims.d, ui.get(software.visuals.effects.thirdperson[2]), 0.1)
@@ -1758,17 +1761,27 @@ do
 			local state = render.measure_text('d', get_state())
 			local asp = ui.get(gui.aspectratio)
 			ctx.anims.z = motion.interp(ctx.anims.z, state == gui.cur_state and ui.get(indicators.indicator), 0.1)
+			ctx.anims.f = motion.interp(ctx.anims.f, exploit and ui.get(indicators.indicator), 0.05)
+			ctx.anims.w = motion.interp(ctx.anims.w, not exploit and ui.get(indicators.indicator), 0.05)
 			ctx.anims.k = motion.interp(ctx.anims.k, ui.get(indicators.indicator), 0.01)
 			ctx.anims.s = motion.interp(ctx.anims.s, asp == gui.aspectr, 0.01)
+
+			if ctx.anims.w < .1 then
+				gui.doubletap = 'charged'
+			end
+
+			if ctx.anims.f < .1 then
+				gui.doubletap = 'recharge'
+			end
 		
 			if ctx.anims.s < 0.1 then
 				gui.aspectr = asp
 			end
 		
-			backup.visual.fov = ui.get(gui.zoom_on) and ctx.anims.f or entity.get_prop(g_ctx.lp, 'm_bIsScoped') * 1
+			backup.visual.fov = ui.get(gui.zoom_on) and ctx.anims.c or entity.get_prop(g_ctx.lp, 'm_bIsScoped') * 1
 			backup.visual.state = ctx.anims.z or 1
 			backup.visual.ind = ctx.anims.k or 0
-			backup.visual.scoped = ctx.anims.c + ctx.anims.n or 0
+			backup.visual.scoped = ctx.anims.c + ctx.anims.n + ctx.anims.l or 0
 			backup.visual.thirdperson = ui.get(gui.thirdperson_on) and ctx.anims.d or 1
 			backup.visual.aspectratio = gui.aspectr or 1
 			cvar.r_aspectratio:set_float(backup.visual.aspectratio * 0.01)
@@ -1806,20 +1819,8 @@ do
 				elseif ui.get(indicators.indicator_font) == 'Bold' then
 					opt = 'b'
 				end
-				if bind.full_name == 'antarctica' then
-					if ui.get(indicators.indicator_font) == 'Small' then
-						text = bind.full_name:upper()
-					else
-						text = bind.full_name
-					end
-					alphaz = alpha
-					clr = {
-						[1] = r,
-						[2] = g,
-						[3] = b,
-						[4] = 215 * alphaz,
-					}
-				elseif bind.full_name == 'state' then
+
+				if bind.full_name == 'state' then
 					if ui.get(indicators.indicator_font) == 'Small' then
 						text = '`'..string.sub(get_state():upper(), 1, math.floor(.5 + #get_state() * backup.visual.state))..'`'
 					else
@@ -1932,36 +1933,32 @@ do
             for enemy = 1, globals.maxplayers() do
 				name = entity.get_player_name(enemy)
 				local x1, y1, x2, y2, a2 = entity.get_bounding_box(enemy)
-				--local top = ''
-				--if enemy == lua._pl then
-				--	if lua.ba and lua.sf then
-				--		top = 'ba & sp'
-				--	elseif lua.ba then
-				--		top = 'ba'
-				--	elseif lua.sf then
-				--		top = 'sp'
-				--	else
-				--		top = ''
-				---	end
-				--else
-				--	top = ''
-				--end
+				local top = ''
+				if lua.ba and lua.sf then
+					top = 'ba & sp'
+				elseif lua.ba then
+				top = 'ba'
+				elseif lua.sf then
+					top = 'sp'
+				else
+					top = ''
+				end
 
 				if y1 ~= nil and x1 ~= nil then
 					local x_center = x1 + (x2 - x1) / 2
-					--if ui.get(gui.indicators.basf) then
-					--	local opt = ''
-					--	if ui.get(indicators.basf_font) == 'Small' then
-					--		opt = 'c-'
-					--		top = top:upper()
-					--	elseif ui.get(indicators.basf_font) == 'Default' then
-					--		opt = 'c'
-					--	elseif ui.get(indicators.basf_font) == 'Bold' then
-					--		opt = 'cb'
-					--	end
-					--	r, g, b, a = ui.get(indicators.basf_color)
-					--	render.text(x_center, y1 - 17, r, g, b, a * a2, opt, nil, top)
-					--end
+					if ui.get(gui.indicators.basf) then
+						local opt = ''
+						if ui.get(indicators.basf_font) == 'Small' then
+							opt = 'c-'
+							top = top:upper()
+						elseif ui.get(indicators.basf_font) == 'Default' then
+							opt = 'c'
+						elseif ui.get(indicators.basf_font) == 'Bold' then
+							opt = 'cb'
+						end
+						r, g, b, a = ui.get(indicators.basf_color)
+						render.text(x_center, y1 - 17, r, g, b, a * a2, opt, nil, top)
+					end
 					if ui.get(gui.indicators.name) then
 						local opt = ''
 						if ui.get(indicators.name_font) == 'Small' then
@@ -1978,6 +1975,70 @@ do
 				end
 			end
 		end,
+		esp_info = function()
+			local indicators = gui.indicators
+		
+			if not ui.get(indicators.basf) then
+				return
+			end
+		
+			local font_type = ui.get(indicators.basf_font)
+			local r, g, b, a = ui.get(indicators.basf_color)
+		
+			local player_resource = entity.get_player_resource()
+		
+			local text_flags = ''
+			if font_type == 'Small' then
+				text_flags = 'c-'
+			elseif font_type == 'Default' then
+				text_flags = 'c'
+			elseif font_type == 'Bold' then
+				text_flags = 'cb'
+			end
+		
+			for player = 1, globals.maxplayers() do
+				local is_connected = entity.get_prop(
+					player_resource, 'm_bConnected', player
+				)
+		
+				local is_enemy = entity.is_enemy(player)
+		
+				if not is_connected or not is_enemy then
+					goto continue
+				end
+		
+				local x1, y1, x2, y2, alpha = entity.get_bounding_box(player)
+		
+				if x1 == nil or y1 == nil or alpha == 0.0 then
+					goto continue
+				end
+		
+				local center_x = x1 + (x2 - x1) * 0.5
+				local offset_y = y1 - 17
+		
+				local text = { }
+		
+				local body_aim_value = lua.esp_body_aim[player]
+				local safe_point_value = lua.esp_body_aim[player]
+		
+				if body_aim_value then
+					table.insert(text, 'ba')
+				end
+		
+				if safe_point_value then
+					table.insert(text, 'sp')
+				end
+		
+				text = table.concat(text, ' & ')
+		
+				if text == '' then
+					goto continue
+				end
+		
+				render.text(center_x, offset_y, r, g, b, a * alpha, text_flags, nil, font_type == 'Small' and text:upper() or text)
+				::continue::
+			end
+		end,
 		indictor_call = function()
 			if ui.get(gui.airstop) then
 				if ui.get(gui.airstopb) then
@@ -1988,16 +2049,18 @@ do
 	}
 
 	function indicators.render()
+		def.visuals:esp_name()
+
 		if not entity.is_alive(g_ctx.lp) then
 			return
 		end
 
+		def.visuals:esp_info()
 		def.visuals:interlerpfuncs()
 		def.visuals:indicator()
 		def.visuals:manual_arrows()
 		def.visuals:watermark()
 		def.visuals:damage_indicator()
-		def.visuals:esp_name()
 		def.visuals:indictor_call()
 	end
 end
