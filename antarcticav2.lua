@@ -213,11 +213,7 @@ do
 	function motion.logs()
 		local offset, x, y = 0, 10, -9
 		for idx, data in ipairs(lua) do
-			if globals.curtime() - data[3] < 5 and not (#lua > 7 and idx < #lua - 7) and ui.get(gui.menu.outputlogs) == 'Lua' and entity.is_alive(g_ctx.lp) then
-				data[2] = motion.animation(data[2], 255, 4)
-			else
-				data[2] = motion.animation(data[2], 0, 4)
-			end
+			data[2] = motion.interp(data[2], globals.curtime() - data[3] < 5 and not (#lua > 7 and idx < #lua - 7) and ui.get(gui.menu.outputlogs) == 'Lua' and entity.is_alive(g_ctx.lp), 0.1)
 	
 			local opt = ''
 			if ui.get(gui.menu.logsfont) == 'Small' then
@@ -228,15 +224,15 @@ do
 				opt = 'b'
 			end
 
-			offset = offset - 16 * (data[2] / 255)
+			offset = offset - 16 * (data[2])
 			local text_log = data[5] and data[1] or data[1]
-			local text_sizex, text_sizey = render.measure_text(opt, text_log)
+			local text_sizex, text_sizey = render.measure_text(opt, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
 			if data[12] then
-				render.text(x, y - offset, data[8], data[9], data[10], data[11] * (data[2] / 255), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
+				render.text(x, y - offset, data[8], data[9], data[10], data[11] * (data[2]), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
 			end
 
 			if data[7] then
-				render.text(x + g_ctx.screen[1] * .5 - text_sizex * .5, y + g_ctx.screen[2] - 300 - offset, data[8], data[9], data[10], data[11] * (data[2] / 255), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
+				render.text(x + g_ctx.screen[1] * .5 - text_sizex * .5, y + g_ctx.screen[2] - 300 - offset, data[8], data[9], data[10], data[11] * (data[2]), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
 			end
 			
 			if data[2] < .1 then table.remove(lua, idx) end
@@ -362,323 +358,313 @@ do
 		end
 		return false
 	end
-
-		local native_GetClientEntity = vtable_bind('client.dll', 'VClientEntityList003', 3, 'void*(__thiscall*)(void*, int)')
-		local char_ptr = ffi.typeof('char*')
-		local nullptr = ffi.new('void*')
-		local class_ptr = ffi.typeof('void***')
-		local animation_layer_t = ffi.typeof([[
-		struct {										char pad0[0x18];
-			uint32_t	sequence;
-			float		prev_cycle;
-			float		weight;
-			float		weight_delta_rate;
-			float		playback_rate;
-			float		cycle;
-			void		*entity;				char pad1[0x4];
-		} **
-		]])
 	
-		def.gui = {
-			hide_aa_tab = function(boolean)
-				ui.set_visible(software.antiaim.angles.enabled, not boolean)
-				ui.set_visible(software.antiaim.angles.pitch[1], not boolean)
-				ui.set_visible(software.antiaim.angles.pitch[2], not boolean)
-				ui.set_visible(software.antiaim.angles.roll, not boolean)
-				ui.set_visible(software.antiaim.angles.yaw_base, not boolean)
-				ui.set_visible(software.antiaim.angles.yaw[1], not boolean)
-				ui.set_visible(software.antiaim.angles.yaw[2], not boolean)
-				ui.set_visible(software.antiaim.angles.yaw_jitter[1], not boolean)
-				ui.set_visible(software.antiaim.angles.yaw_jitter[2], not boolean)
-				ui.set_visible(software.antiaim.angles.desync[1], not boolean)
-				ui.set_visible(software.antiaim.angles.desync[2], not boolean)
-				ui.set_visible(software.antiaim.angles.freestanding[1], not boolean)
-				ui.set_visible(software.antiaim.angles.freestanding[2], not boolean)
-				ui.set_visible(software.antiaim.angles.freestanding_body_yaw, not boolean)
-				ui.set_visible(software.antiaim.angles.edge_yaw, not boolean)
-				ui.set_visible(software.antiaim.fakelag.on[1], not boolean)
-				ui.set_visible(software.antiaim.fakelag.on[2], not boolean)
-				ui.set_visible(software.antiaim.fakelag.variance, not boolean)
-				ui.set_visible(software.antiaim.fakelag.amount, not boolean)
-				ui.set_visible(software.antiaim.fakelag.limit, not boolean)
-				ui.set_visible(software.rage.binds.on_shot_anti_aim[1], not boolean)	
-				ui.set_visible(software.rage.binds.on_shot_anti_aim[2], not boolean)
-				ui.set_visible(software.antiaim.other.slow_motion[1], not boolean)
-				ui.set_visible(software.antiaim.other.slow_motion[2], not boolean)
-				ui.set_visible(software.antiaim.other.fake_peek[1], not boolean)
-				ui.set_visible(software.antiaim.other.fake_peek[2], not boolean)
-				ui.set_visible(software.antiaim.other.leg_movement, not boolean)
-			end,
-			anim = function()
-				local player_ptr = ffi.cast(class_ptr, native_GetClientEntity(g_ctx.lp))
-				if player_ptr == nullptr then
-					return
+	def.gui = {
+		hide_aa_tab = function(boolean)
+			ui.set_visible(software.antiaim.angles.enabled, not boolean)
+			ui.set_visible(software.antiaim.angles.pitch[1], not boolean)
+			ui.set_visible(software.antiaim.angles.pitch[2], not boolean)
+			ui.set_visible(software.antiaim.angles.roll, not boolean)
+			ui.set_visible(software.antiaim.angles.yaw_base, not boolean)
+			ui.set_visible(software.antiaim.angles.yaw[1], not boolean)
+			ui.set_visible(software.antiaim.angles.yaw[2], not boolean)
+			ui.set_visible(software.antiaim.angles.yaw_jitter[1], not boolean)
+			ui.set_visible(software.antiaim.angles.yaw_jitter[2], not boolean)
+			ui.set_visible(software.antiaim.angles.desync[1], not boolean)
+			ui.set_visible(software.antiaim.angles.desync[2], not boolean)
+			ui.set_visible(software.antiaim.angles.freestanding[1], not boolean)
+			ui.set_visible(software.antiaim.angles.freestanding[2], not boolean)
+			ui.set_visible(software.antiaim.angles.freestanding_body_yaw, not boolean)
+			ui.set_visible(software.antiaim.angles.edge_yaw, not boolean)
+			ui.set_visible(software.antiaim.fakelag.on[1], not boolean)
+			ui.set_visible(software.antiaim.fakelag.on[2], not boolean)
+			ui.set_visible(software.antiaim.fakelag.variance, not boolean)
+			ui.set_visible(software.antiaim.fakelag.amount, not boolean)
+			ui.set_visible(software.antiaim.fakelag.limit, not boolean)
+			ui.set_visible(software.rage.binds.on_shot_anti_aim[1], not boolean)	
+			ui.set_visible(software.rage.binds.on_shot_anti_aim[2], not boolean)
+			ui.set_visible(software.antiaim.other.slow_motion[1], not boolean)
+			ui.set_visible(software.antiaim.other.slow_motion[2], not boolean)
+			ui.set_visible(software.antiaim.other.fake_peek[1], not boolean)
+			ui.set_visible(software.antiaim.other.fake_peek[2], not boolean)
+			ui.set_visible(software.antiaim.other.leg_movement, not boolean)
+		end,
+		anim = function()
+            local local_player = entitys(g_ctx.lp)
+            if local_player == nil then return end
+
+			local first_velocity, second_velocity = entity.get_prop(g_ctx.lp, 'm_vecVelocity')
+			local speed = math.floor(math.sqrt(first_velocity*first_velocity+second_velocity*second_velocity))
+
+			local a12 = ui.get(gui.anim.builder['Move lean'].pose_layer)
+			local a6 = ui.get(gui.anim.builder['Run in air'].pose_layer)
+			local p7 = ui.get(gui.anim.builder['Line run'].pose_layer)
+			local p6 = ui.get(gui.anim.builder['Static legs in air'].pose_layer)
+			local p0 = ui.get(gui.anim.builder['Static legs on ground'].pose_layer)
+			local mdscl = ui.get(gui.anim.builder['Model scale'].pose_layer)
+			local bsdstrt12 = ui.get(gui.anim.builder['Move lean'].bsod1) * .1
+			local bsdnd12 = ui.get(gui.anim.builder['Move lean'].bsod2) * .1
+			local bsdstrt6 = ui.get(gui.anim.builder['Run in air'].bsod1) * .1
+			local bsdnd6 = ui.get(gui.anim.builder['Run in air'].bsod2) * .1
+			local bsdstrt7 = ui.get(gui.anim.builder['Line run'].bsod1) * .1
+			local bsdnd7 = ui.get(gui.anim.builder['Line run'].bsod2) * .1
+			local sbsdstrt = ui.get(gui.anim.builder['Static legs in air'].bsod1) * .1
+			local sbsdnd = ui.get(gui.anim.builder['Static legs in air'].bsod2) * .1
+			local bsdstrt0 = ui.get(gui.anim.builder['Static legs on ground'].bsod1) * .1
+			local bsdnd0 = ui.get(gui.anim.builder['Static legs on ground'].bsod2) * .1
+			local models = ui.get(gui.anim.builder['Model scale'].bsod1) * .1
+			local modelsc = ui.get(gui.anim.builder['Model scale'].bsod2) * .1
+
+			local realtime12 = globals.realtime() * .5 % 1
+			local nolag12 = realtime12
+
+			local realtime6 = globals.realtime() * .5 % 1
+			local nolag6 = realtime6
+			local anim_twelve = local_player:get_anim_overlay(12)
+			local anim_six = local_player:get_anim_overlay(6)
+			local anim_zero = local_player:get_anim_overlay(0)
+            if anim_twelve == nil then return end if anim_six == nil then return end if anim_zero == nil then return end
+
+			if speed > 5 then
+				if a12 == '1' then
+					anim_twelve.weight = 1
+					anim_twelve.cycle = nolag12
+				elseif a12 == '0.5' then
+					anim_twelve.weight = .5
+					anim_twelve.cycle = nolag12
+				elseif a12 == '0.0' then
+					anim_twelve.weight = .0
+					anim_twelve.cycle = nolag12
+				elseif a12 == 'Process' then
+					anim_twelve.weight = events.random_float(bsdstrt12, bsdnd12)
+					anim_twelve.cycle = nolag12
 				end
-
-				local first_velocity, second_velocity = entity.get_prop(g_ctx.lp, 'm_vecVelocity')
-				local speed = math.floor(math.sqrt(first_velocity*first_velocity+second_velocity*second_velocity))
-	
-				local a12 = ui.get(gui.anim.builder['Move lean'].pose_layer)
-				local a6 = ui.get(gui.anim.builder['Run in air'].pose_layer)
-				local p7 = ui.get(gui.anim.builder['Line run'].pose_layer)
-				local p6 = ui.get(gui.anim.builder['Static legs in air'].pose_layer)
-				local p0 = ui.get(gui.anim.builder['Static legs on ground'].pose_layer)
-				local mdscl = ui.get(gui.anim.builder['Model scale'].pose_layer)
-				local bsdstrt12 = ui.get(gui.anim.builder['Move lean'].bsod1) * .1
-				local bsdnd12 = ui.get(gui.anim.builder['Move lean'].bsod2) * .1
-				local bsdstrt6 = ui.get(gui.anim.builder['Run in air'].bsod1) * .1
-				local bsdnd6 = ui.get(gui.anim.builder['Run in air'].bsod2) * .1
-				local bsdstrt7 = ui.get(gui.anim.builder['Line run'].bsod1) * .1
-				local bsdnd7 = ui.get(gui.anim.builder['Line run'].bsod2) * .1
-				local sbsdstrt = ui.get(gui.anim.builder['Static legs in air'].bsod1) * .1
-				local sbsdnd = ui.get(gui.anim.builder['Static legs in air'].bsod2) * .1
-				local bsdstrt0 = ui.get(gui.anim.builder['Static legs on ground'].bsod1) * .1
-				local bsdnd0 = ui.get(gui.anim.builder['Static legs on ground'].bsod2) * .1
-				local models = ui.get(gui.anim.builder['Model scale'].bsod1) * .1
-				local modelsc = ui.get(gui.anim.builder['Model scale'].bsod2) * .1
-	
-				local realtime12 = globals.realtime() * .5 % 1
-				local nolag12 = realtime12
-	
-				local realtime6 = globals.realtime() * .5 % 1
-				local nolag6 = realtime6
-				local anim_layers = ffi.cast(animation_layer_t, ffi.cast(char_ptr, player_ptr) + 0x2990)[0]
-	
-				if speed > 5 then
-					if a12 == '1' then
-						anim_layers[12]['weight'] = 1
-						anim_layers[12]['cycle'] = nolag12
-					elseif a12 == '0.5' then
-						anim_layers[12]['weight'] = .5
-						anim_layers[12]['cycle'] = nolag12
-					elseif a12 == '0.0' then
-						anim_layers[12]['weight'] = .0
-						anim_layers[12]['cycle'] = nolag12
-					elseif a12 == 'Process' then
-						anim_layers[12]['weight'] = events.random_float(bsdstrt12, bsdnd12)
-						anim_layers[12]['cycle'] = nolag12
-					end
-			
-					if not g_ctx.grtck then
-						if a6 == '1' then
-							anim_layers[6]['weight'] = 1
-							anim_layers[6]['cycle'] = nolag6
-						elseif a6 == '0.5' then
-							anim_layers[6]['weight'] = .5
-							anim_layers[6]['cycle'] = nolag6
-						elseif a6 == '0.0' then
-							anim_layers[6]['weight'] = .0
-							anim_layers[6]['cycle'] = nolag6
-						elseif a6 == 'Process' then
-							anim_layers[6]['weight'] = events.random_float(bsdstrt6, bsdnd6)
-							anim_layers[6]['cycle'] = nolag6
-						end
-					end
-			
-					if p7 == '1' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 7)
-					elseif p7 == '0.5' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 7)
-					elseif p7 == '0.0' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 7)
-					elseif p7 == 'Process' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt7, bsdnd7), 7)
-					end
-			
-					if p6 == '1' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 6)
-					elseif p6 == '0.5' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 6)
-					elseif p6 == '0.0' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 6)
-					elseif p6 == 'Process' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(sbsdstrt, sbsdnd), 6)
-					end
-
-					if p0 == '1' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 0)
-					elseif p0 == '0.5' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 0)
-					elseif p0 == '0.0' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 0)
-					elseif p0 == 'Process' then
-						entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt0, bsdnd0), 0)
+		
+				if not g_ctx.grtck then
+					if a6 == '1' then
+						anim_six.weight = 1
+						anim_six.cycle = nolag6
+					elseif a6 == '0.5' then
+						anim_six.weight = .5
+						anim_six.cycle = nolag6
+					elseif a6 == '0.0' then
+						anim_six.weight = .0
+						anim_six.cycle = nolag6
+					elseif a6 == 'Process' then
+						anim_six.weight = events.random_float(bsdstrt6, bsdnd6)
+						anim_six.cycle = nolag6
 					end
 				end
-	
-				if mdscl == '1' then
-					entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
-				elseif mdscl == '0.5' then
-					entity.set_prop(g_ctx.lp, 'm_flModelScale', .5)
-				elseif mdscl == '0.0' then
-					entity.set_prop(g_ctx.lp, 'm_flModelScale', .0)
-				elseif mdscl == 'Process' then
-					entity.set_prop(g_ctx.lp, 'm_flModelScale', events.random_float(models, modelsc))
-				else
-					entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
+		
+				if p7 == '1' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 7)
+				elseif p7 == '0.5' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 7)
+				elseif p7 == '0.0' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 7)
+				elseif p7 == 'Process' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt7, bsdnd7), 7)
 				end
 
-				if ui.get(gui.menu.grfl) then
-					anim_layers[0]['sequence'] = 227
+				if p0 == '1' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 0)
+				elseif p0 == '0.5' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 0)
+				elseif p0 == '0.0' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 0)
+				elseif p0 == 'Process' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(bsdstrt0, bsdnd0), 0)
 				end
-			end,
-			hex_label = function(self, rgb)
-				local hexadecimal= '\a'
-				
-				for key, value in pairs(rgb) do
-					local hex = ''
-			
-					while value > 0 do
-						local index = math.fmod(value, 16) + 1
-						value = math.floor(value/16)
-						hex = ('0123456789ABCDEF'):sub(index, index) .. hex
-					end
-			
-					if #hex == 0 then 
-						hex= '00' 
-					elseif #hex == 1 then 
-						hex= '0' .. hex 
-					end
-			
-					hexadecimal = hexadecimal .. hex
-				end 
-				
-				return hexadecimal
-			end,
-			text = function(color_start, color_end, text, speed)
-				local r1, g1, b1, a1 = ui.get(color_start)
-				local r2, g2, b2, a2 = ui.get(color_end)
-				local highlight_fraction =  (globals.realtime() * .5 % 1.2 * speed) - 1.2
-				local output = ''
-				for idx = 1, #text do
-					local character = text:sub(idx, idx)
-					local character_fraction = idx / #text
-					local r, g, b, a = r1, g1, b1, a1
-					local highlight_delta = (character_fraction - highlight_fraction)
-					if highlight_delta >= 0 and highlight_delta <= 1.4 then
-						if highlight_delta > 0.7 then
-							highlight_delta = 1.4 - highlight_delta
-						end
-						local r_fraction, g_fraction, b_fraction, a_fraction = r2 - r, g2 - g, b2 - b
-						r = r + r_fraction * highlight_delta / 0.8
-						g = g + g_fraction * highlight_delta / 0.8
-						b = b + b_fraction * highlight_delta / 0.8
-					end
-					output = output .. ('\a%02x%02x%02x%02x%s'):format(r, g, b, 255, text:sub(idx, idx))
-				end
-				return output
-			end,
-		}
-
-		function gui.shut()
-			def.gui.hide_aa_tab(false)
-		end
-
-		function gui.render()
-			local indicators = gui.indicators
-			local luatabif = ui.get(gui.menu.lua) == 'Info'
-			local luatabaa = ui.get(gui.menu.lua) == 'Antiaim'
-			local luatabvis = ui.get(gui.menu.lua) == 'Visuals'
-			local luatabmisc = ui.get(gui.menu.lua) == 'Misc'
-			local luatabpl = ui.get(gui.menu.lua) == 'Helps'
-			local indsd = ui.get(indicators.indicator)
-			local dmgind = ui.get(indicators.damage_indicator)
-			local logz = ui.get(gui.menu.outputlogs) == 'Lua'
-			local nameesp = ui.get(gui.indicators.name)
-			local basf = ui.get(gui.indicators.basf)
-			ui.set_visible(gui.menu.miscellaneous, luatabaa)
-			ui.set_visible(indicators.manual2arrows, luatabvis)
-			ui.set_visible(indicators.maincolor, luatabvis)
-			ui.set_visible(indicators.backcolor, luatabvis)
-			ui.set_visible(indicators.wmaincolor, luatabvis)
-			ui.set_visible(indicators.wbackcolor, luatabvis)
-			ui.set_visible(indicators.indicator, luatabvis)
-			ui.set_visible(indicators.indicator_color, luatabvis and indsd)
-			ui.set_visible(indicators.indicator_anim, luatabvis and indsd)
-			ui.set_visible(indicators.indicator_font, luatabvis and indsd)
-			ui.set_visible(indicators.indicator_slider, luatabvis and indsd)
-			ui.set_visible(indicators.damage_indicator, luatabvis)
-			ui.set_visible(indicators.damage_indicator_color, luatabvis and dmgind)
-			ui.set_visible(indicators.damage_indicator_font, luatabvis and dmgind)
-			ui.set_visible(indicators.watermark_style, luatabvis)
-			ui.set_visible(indicators.watermark_font, luatabvis)
-			ui.set_visible(gui.thirdperson, luatabvis)
-			ui.set_visible(gui.thirdperson_on, luatabvis)
-			ui.set_visible(gui.menu.hitlogs, luatabmisc)
-			ui.set_visible(gui.menu.reglogs, luatabmisc)
-			ui.set_visible(gui.menu.misslogs, luatabmisc)
-			ui.set_visible(gui.menu.regcolor, luatabmisc)
-			ui.set_visible(gui.menu.hitcolor, luatabmisc)
-			ui.set_visible(gui.menu.misscolor, luatabmisc)
-			ui.set_visible(gui.menu.logsfont, luatabmisc and logz)
-			ui.set_visible(gui.menu.cenlogs, luatabmisc and logz)
-			ui.set_visible(gui.menu.outputlogs, luatabmisc)
-			ui.set_visible(gui.menu.nadelogs, luatabmisc)
-			ui.set_visible(gui.menu.nadecolor, luatabmisc)
-			ui.set_visible(gui.aspectratio, luatabvis)
-			ui.set_visible(gui.indicators.name, luatabvis)
-			ui.set_visible(gui.indicators.name_color, luatabvis and nameesp)
-			ui.set_visible(gui.indicators.name_font, luatabvis and nameesp)
-			ui.set_visible(gui.fov, luatabvis)
-			ui.set_visible(gui.zoom, luatabvis)
-			ui.set_visible(gui.zoom_on, luatabvis)
-			ui.set_visible(gui.menu.grfl, luatabmisc)
-			ui.set_visible(gui.menu.fixdt, luatabmisc)
-			ui.set_visible(gui.menu.info, luatabif)
-			ui.set_visible(gui.menu.info2, luatabif)
-			ui.set_visible(gui.menu.info3, luatabif)
-
-			ui.set(software.visuals.effects.name[1], not nameesp)
-			ui.set_enabled(software.visuals.effects.name[1], not nameesp)
-
-			local enpl = ui.get(gui.corrections.enable_pl)
-			local overbody = ui.get(gui.corrections.overb_pl) ~= 'Off'
-			local constructor_pl = luatabpl and enpl
-			local po_pl = ui.get(gui.corrections.overbs_pl)
-
-			ui.set_visible(gui.corrections.enable_pl, luatabpl)
-			ui.set_visible(gui.corrections.overb_pl, constructor_pl)
-			ui.set_visible(gui.corrections.overbs_pl, constructor_pl and overbody)
-			ui.set_visible(gui.corrections.misses_pl, constructor_pl and overbody and gui.select(po_pl, 'After misses'))
-			ui.set_visible(gui.corrections.hp_pl, constructor_pl and overbody and gui.select(po_pl, 'HP'))
-			ui.set_visible(gui.indicators.basf, constructor_pl)
-			--ui.set_enabled(gui.indicators.basf, false)
-			--ui.set(gui.indicators.basf, false)
-			ui.set_visible(gui.indicators.basf_color, constructor_pl and basf)
-			ui.set_visible(gui.indicators.basf_font, constructor_pl and basf)
-
-			local sfover = ui.get(gui.corrections.oversf_pl) ~= 'Off'
-			local sfpo_pl = ui.get(gui.corrections.oversfs_pl)
-
-			ui.set_visible(gui.corrections.oversf_pl, constructor_pl)
-			ui.set_visible(gui.corrections.oversfs_pl, constructor_pl and sfover)
-			ui.set_visible(gui.corrections.sfmisses_pl, constructor_pl and sfover and gui.select(sfpo_pl, 'After misses'))
-			ui.set_visible(gui.corrections.sfhp_pl, constructor_pl and sfover and gui.select(sfpo_pl, 'HP'))
-
-			ui.set_visible(gui.anim.animbreaker, luatabmisc)
-			for i, name in pairs(gui.anim.anm) do
-				local opened = name == ui.get(gui.anim.animbreaker)
-				local bsod = ui.get(gui.anim.builder[name].pose_layer) == 'Process'
-				ui.set_visible(gui.anim.builder[name].pose_layer, opened and luatabmisc)
-				ui.set_visible(gui.anim.builder[name].bsod1, opened and luatabmisc and bsod)
-				ui.set_visible(gui.anim.builder[name].bsod2, opened and luatabmisc and bsod)
 			end
 
-			if ui.get(gui.menu.outputlogs) == 'Lua' then
-				ui.set(software.visuals.effects.output, false)
-				ui.set_enabled(software.visuals.effects.output, false)
+			if not g_ctx.grtck then
+				if p6 == '1' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', 1, 6)
+				elseif p6 == '0.5' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .5, 6)
+				elseif p6 == '0.0' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', .0, 6)
+				elseif p6 == 'Process' then
+					entity.set_prop(g_ctx.lp, 'm_flPoseParameter', events.random_float(sbsdstrt, sbsdnd), 6)
+				end
+			end
+
+			if mdscl == '1' then
+				entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
+			elseif mdscl == '0.5' then
+				entity.set_prop(g_ctx.lp, 'm_flModelScale', .5)
+			elseif mdscl == '0.0' then
+				entity.set_prop(g_ctx.lp, 'm_flModelScale', .0)
+			elseif mdscl == 'Process' then
+				entity.set_prop(g_ctx.lp, 'm_flModelScale', events.random_float(models, modelsc))
 			else
-				ui.set(software.visuals.effects.output, true)
-				ui.set_enabled(software.visuals.effects.output, true)
+				entity.set_prop(g_ctx.lp, 'm_flModelScale', 1)
 			end
+
+			if ui.get(gui.menu.grfl) then
+				anim_zero.sequence = 227
+			end
+		end,
+		hex_label = function(self, rgb)
+			local hexadecimal= '\a'
+			
+			for key, value in pairs(rgb) do
+				local hex = ''
+		
+				while value > 0 do
+					local index = math.fmod(value, 16) + 1
+					value = math.floor(value/16)
+					hex = ('0123456789ABCDEF'):sub(index, index) .. hex
+				end
+		
+				if #hex == 0 then 
+					hex= '00' 
+				elseif #hex == 1 then 
+					hex= '0' .. hex 
+				end
+		
+				hexadecimal = hexadecimal .. hex
+			end 
+			
+			return hexadecimal
+		end,
+		text = function(color_start, color_end, text, speed)
+			local r1, g1, b1, a1 = ui.get(color_start)
+			local r2, g2, b2, a2 = ui.get(color_end)
+			local highlight_fraction =  (globals.realtime() * .5 % 1.2 * speed) - 1.2
+			local output = ''
+			for idx = 1, #text do
+				local character = text:sub(idx, idx)
+				local character_fraction = idx / #text
+				local r, g, b, a = r1, g1, b1, a1
+				local highlight_delta = (character_fraction - highlight_fraction)
+				if highlight_delta >= 0 and highlight_delta <= 1.4 then
+					if highlight_delta > 0.7 then
+						highlight_delta = 1.4 - highlight_delta
+					end
+					local r_fraction, g_fraction, b_fraction, a_fraction = r2 - r, g2 - g, b2 - b
+					r = r + r_fraction * highlight_delta / 0.8
+					g = g + g_fraction * highlight_delta / 0.8
+					b = b + b_fraction * highlight_delta / 0.8
+				end
+				output = output .. ('\a%02x%02x%02x%02x%s'):format(r, g, b, 255, text:sub(idx, idx))
+			end
+			return output
+		end,
+	}
+
+	function gui.shut()
+		def.gui.hide_aa_tab(false)
+	end
+
+	function gui.render()
+		local indicators = gui.indicators
+		local luatabif = ui.get(gui.menu.lua) == 'Info'
+		local luatabaa = ui.get(gui.menu.lua) == 'Antiaim'
+		local luatabvis = ui.get(gui.menu.lua) == 'Visuals'
+		local luatabmisc = ui.get(gui.menu.lua) == 'Misc'
+		local luatabpl = ui.get(gui.menu.lua) == 'Helps'
+		local indsd = ui.get(indicators.indicator)
+		local dmgind = ui.get(indicators.damage_indicator)
+		local logz = ui.get(gui.menu.outputlogs) == 'Lua'
+		local nameesp = ui.get(gui.indicators.name)
+		local basf = ui.get(gui.indicators.basf)
+		local mayaw = ui.get(indicators.manual2arrows)
+		ui.set_visible(gui.menu.miscellaneous, luatabaa)
+		ui.set_visible(indicators.manual2arrows, luatabvis)
+		ui.set_visible(indicators.manualslider, luatabvis and mayaw)
+		ui.set_visible(indicators.maincolor, luatabvis)
+		ui.set_visible(indicators.backcolor, luatabvis)
+		ui.set_visible(indicators.wmaincolor, luatabvis)
+		ui.set_visible(indicators.wbackcolor, luatabvis)
+		ui.set_visible(indicators.indicator, luatabvis)
+		ui.set_visible(indicators.indicator_color, luatabvis and indsd)
+		ui.set_visible(indicators.indicator_anim, luatabvis and indsd)
+		ui.set_visible(indicators.indicator_font, luatabvis and indsd)
+		ui.set_visible(indicators.indicator_slider, luatabvis and indsd)
+		ui.set_visible(indicators.indicator_slider2, luatabvis and indsd)
+		ui.set_visible(indicators.damage_indicator, luatabvis)
+		ui.set_visible(indicators.damage_indicator_color, luatabvis and dmgind)
+		ui.set_visible(indicators.damage_indicator_font, luatabvis and dmgind)
+		ui.set_visible(indicators.watermark_style, luatabvis)
+		ui.set_visible(indicators.watermark_font, luatabvis)
+		ui.set_visible(gui.thirdperson, luatabvis)
+		ui.set_visible(gui.thirdperson_on, luatabvis)
+		ui.set_visible(gui.menu.hitlogs, luatabmisc)
+		ui.set_visible(gui.menu.reglogs, luatabmisc)
+		ui.set_visible(gui.menu.misslogs, luatabmisc)
+		ui.set_visible(gui.menu.regcolor, luatabmisc)
+		ui.set_visible(gui.menu.hitcolor, luatabmisc)
+		ui.set_visible(gui.menu.misscolor, luatabmisc)
+		ui.set_visible(gui.menu.logsfont, luatabmisc and logz)
+		ui.set_visible(gui.menu.cenlogs, luatabmisc and logz)
+		ui.set_visible(gui.menu.outputlogs, luatabmisc)
+		ui.set_visible(gui.menu.nadelogs, luatabmisc)
+		ui.set_visible(gui.menu.nadecolor, luatabmisc)
+		ui.set_visible(gui.aspectratio, luatabvis)
+		ui.set_visible(gui.indicators.name, luatabvis)
+		ui.set_visible(gui.indicators.name_color, luatabvis and nameesp)
+		ui.set_visible(gui.indicators.name_font, luatabvis and nameesp)
+		ui.set_visible(gui.fov, luatabvis)
+		ui.set_visible(gui.zoom, luatabvis)
+		ui.set_visible(gui.zoom_on, luatabvis)
+		ui.set_visible(gui.menu.grfl, luatabmisc)
+		ui.set_visible(gui.menu.fixdt, luatabmisc)
+		ui.set_visible(gui.menu.info, luatabif)
+		ui.set_visible(gui.menu.info2, luatabif)
+		ui.set_visible(gui.menu.info3, luatabif)
+
+		ui.set(software.visuals.effects.name[1], not nameesp)
+		ui.set_enabled(software.visuals.effects.name[1], not nameesp)
+
+		local enpl = ui.get(gui.corrections.enable_pl)
+		local overbody = ui.get(gui.corrections.overb_pl) ~= 'Off'
+		local constructor_pl = luatabpl and enpl
+		local po_pl = ui.get(gui.corrections.overbs_pl)
+
+		ui.set_visible(gui.corrections.enable_pl, luatabpl)
+		ui.set_visible(gui.corrections.overb_pl, constructor_pl)
+		ui.set_visible(gui.corrections.overbs_pl, constructor_pl and overbody)
+		ui.set_visible(gui.corrections.misses_pl, constructor_pl and overbody and gui.select(po_pl, 'After misses'))
+		ui.set_visible(gui.corrections.hp_pl, constructor_pl and overbody and gui.select(po_pl, 'HP'))
+		ui.set_visible(gui.indicators.basf, constructor_pl)
+		--ui.set_enabled(gui.indicators.basf, false)
+		--ui.set(gui.indicators.basf, false)
+		ui.set_visible(gui.indicators.basf_color, constructor_pl and basf)
+		ui.set_visible(gui.indicators.basf_font, constructor_pl and basf)
+
+		local sfover = ui.get(gui.corrections.oversf_pl) ~= 'Off'
+		local sfpo_pl = ui.get(gui.corrections.oversfs_pl)
+
+		ui.set_visible(gui.corrections.oversf_pl, constructor_pl)
+		ui.set_visible(gui.corrections.oversfs_pl, constructor_pl and sfover)
+		ui.set_visible(gui.corrections.sfmisses_pl, constructor_pl and sfover and gui.select(sfpo_pl, 'After misses'))
+		ui.set_visible(gui.corrections.sfhp_pl, constructor_pl and sfover and gui.select(sfpo_pl, 'HP'))
+
+		ui.set_visible(gui.anim.animbreaker, luatabmisc)
+		for i, name in pairs(gui.anim.anm) do
+			local opened = name == ui.get(gui.anim.animbreaker)
+			local bsod = ui.get(gui.anim.builder[name].pose_layer) == 'Process'
+			ui.set_visible(gui.anim.builder[name].pose_layer, opened and luatabmisc)
+			ui.set_visible(gui.anim.builder[name].bsod1, opened and luatabmisc and bsod)
+			ui.set_visible(gui.anim.builder[name].bsod2, opened and luatabmisc and bsod)
 		end
 
-		function gui.animbuilder()
-			if not entity.is_alive(g_ctx.lp) then
-				return
-			end
-			def.gui:anim()
+		if ui.get(gui.menu.outputlogs) == 'Lua' then
+			ui.set(software.visuals.effects.output, false)
+			ui.set_enabled(software.visuals.effects.output, false)
+		else
+			ui.set(software.visuals.effects.output, true)
+			ui.set_enabled(software.visuals.effects.output, true)
 		end
+	end
+
+	function gui.animbuilder()
+		if not entity.is_alive(g_ctx.lp) then
+			return
+		end
+		def.gui:anim()
+	end
 end
 
 do 
@@ -689,10 +675,10 @@ do
 end
 
 do
-	yaw = function(animstate)
-		local yaw = animstate.eye_angles_y
-		yaw = motion.normalize_yaw(yaw)
-		return yaw
+	angle_yaw = function()
+		local view = vector(events.camera_angles())
+		local real = motion.normalize_yaw(antiatims.get_abs_yaw() - view.y - 180)
+		return real
 	end
 
 	body = function(animstate)
@@ -763,6 +749,7 @@ do
 		flags = 0,
 		packets = 0,
 		body = 0,
+		yaw,
 		choking = 0,
 		spin = 0,
 		spinv2 = 0,
@@ -806,8 +793,8 @@ do
 				def.values.choking = def.values.choking * -1
 				def.values.choking_bool = not def.values.choking_bool
 				def.values.body = body(animstate)
-				def.values.yaw = yaw(animstate)
 			end
+			def.values.yaw = math.floor(angle_yaw())
 		end
 	}
 end
@@ -1086,7 +1073,7 @@ do
 		else
 			ctx.ticks = 0
 		end
-
+		
 		g_ctx.grtck = ctx.onground
 		
 		ctx.onground = ctx.ticks > 32
@@ -1317,12 +1304,6 @@ do
 			local target = delay * 2
 			inverted = (def.values.packets % target) >= delay
 			local val = inverted and ui.get(conditions.desync_value) or -ui.get(conditions.desync_value)
-			local camera = vector(events.camera_angles())
-			local head = vector(entity.hitbox_position(g_ctx.lp, 'head_0'))
-			local pelvis = vector(entity.hitbox_position(g_ctx.lp, 'pelvis'))
-
-			local real = motion.normalize_yaw(math.floor(antiatims.get_abs_yaw() - camera.y))
-			real = real * -1
 			--print(real)
 
 			if def.values.ticks > ui.get(conditions.defensive_start) and 
@@ -1536,7 +1517,7 @@ do
 		
 				def.antiaim.clipboard_export(json.stringify(settings))
 				motion.push('Export to buffer', true, true, true, ui.get(gui.menu.cenlogs), 215, 215, 215, 215, ui.get(gui.menu.outputlogs))
-				client.log('Export to buffer')
+				events.log('Export to buffer')
 				cvar.play:invoke_callback('ui/csgo_ui_contract_type1')
 			end)
 		end,
@@ -1561,7 +1542,7 @@ do
 				end
 		
 				motion.push('Import from buffer', true, true, true, ui.get(gui.menu.cenlogs), 215, 215, 215, 215, ui.get(gui.menu.outputlogs))
-				client.log('Import from buffer')
+				events.log('Import from buffer')
 				cvar.play:invoke_callback('ui/csgo_ui_contract_type1')
 			end)
 		end,
@@ -1716,7 +1697,8 @@ do
 		gui.indicators.indicator = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Indicator')
 		gui.indicators.indicator_anim = ui.new_multiselect(gui.aa, gui.aaim, 'Animation \n Indicator', 'On nade', 'On scope', 'On resume')
 		gui.indicators.indicator_font = ui.new_combobox(gui.aa, gui.aaim, '\n Indicator font', 'Small', 'Default', 'Bold')
-		gui.indicators.indicator_slider = ui.new_slider(gui.aa, gui.aaim, '\n Indicator offset', 10, 20, 11, true, 'ofs')
+		gui.indicators.indicator_slider = ui.new_slider(gui.aa, gui.aaim, 'Binds offset \n Indicator', 10, 20, 11, true, 'ofs')
+		gui.indicators.indicator_slider2 = ui.new_slider(gui.aa, gui.aaim, 'Offset \n Indicator', 0, 200, 10, true, 'ofs')
 		gui.indicators.damage_indicator = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Damage indicator')
 		gui.indicators.damage_indicator_color = ui.new_color_picker(gui.aa,gui.aaim,'Damage indicator color', 215, 215, 215)
 		gui.indicators.damage_indicator_font = ui.new_combobox(gui.aa, gui.aaim, '\n Damage font', 'Small', 'Default', 'Bold')
@@ -1724,9 +1706,10 @@ do
 		gui.indicators.wmaincolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark main color', 215, 215, 215)
 		gui.indicators.wbackcolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark back color', 111, 111, 215)
 		gui.indicators.watermark_font = ui.new_combobox(gui.aa, gui.lag, '\n Watermark font', 'Small', 'Default', 'Bold')
-		gui.indicators.manual2arrows = ui.new_checkbox(gui.aa,gui.aaim,gui.menuc..'Manual arrows')
-		gui.indicators.maincolor = ui.new_color_picker(gui.aa,gui.aaim,'Manual main color', 215, 215, 215)
-		gui.indicators.backcolor = ui.new_color_picker(gui.aa,gui.aaim,'Manual back color', 5, 5, 5, 0)
+		gui.indicators.manual2arrows = ui.new_checkbox(gui.aa,gui.aaim,gui.menuc..'Yaw arrow')
+		gui.indicators.manualslider = ui.new_slider(gui.aa, gui.aaim, 'Yaw arrow size', 10, 20, 11, true, 'sz')
+		gui.indicators.maincolor = ui.new_color_picker(gui.aa,gui.aaim,'Yaw arrow main color', 215, 215, 215)
+		gui.indicators.backcolor = ui.new_color_picker(gui.aa,gui.aaim,'Yaw arrow back color', 111, 111, 215)
 		gui.indicators.name = ui.new_checkbox(gui.aa, gui.lag, gui.menuc..'Name esp')
 		gui.indicators.name_color = ui.new_color_picker(gui.aa,gui.lag,'Name color', ui.get(software.visuals.effects.name[2]))
 		gui.indicators.name_font = ui.new_combobox(gui.aa, gui.lag, '\n Name font', 'Small', 'Default', 'Bold')
@@ -1796,6 +1779,9 @@ do
 			
 		local text_size = render.measure_text(fl, text)
 		x = x - text_size * offset * .5 + 20 * ctx.crosshair_indicator.scope
+
+		local yawadd = 30 * backup.visual.manualenable + ui.get(gui.indicators.indicator_slider2)
+		y = y + yawadd
 		
 		render.text(x, y, r, g, b, a, fl, opt, text)
 		
@@ -1950,70 +1936,53 @@ do
 			elseif ui.get(indicators.damage_indicator_font) == 'Bold' then
 				opt = 'b'
 			end
-			render.text(g_ctx.screen[1] * .5 + 5, g_ctx.screen[2] * .5 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, math.floor(ui.get(software.rage.binds.minimum_damage_override[3]))) --* ctx.anims.t
+			local dmg = math.floor(ui.get(software.rage.binds.minimum_damage_override[3]))
+			render.text(g_ctx.screen[1] * .5 + 5, g_ctx.screen[2] * .5 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, dmg) 
 		end,
 		manual_arrows = function()
 			local indicators = gui.indicators
 			local r, g, b, a = ui.get(indicators.maincolor)
 			local r12, g12, b12, a12 = ui.get(indicators.backcolor)
-			local le = render.measure_text('+', '⮜')
-			local re = render.measure_text('+', '⮞')
 
-			render.text(
-			g_ctx.selected_manual == 2 and g_ctx.screen[1] * .5 - re * .5 + 58 or g_ctx.screen[1] * .5 - re * .5 + 58, 
-			g_ctx.screen[2] * .5 - re + 2, 
-			g_ctx.selected_manual == 2 and r or r12, 
-			g_ctx.selected_manual == 2 and g or g12, 
-			g_ctx.selected_manual == 2 and b or b12, 
-			g_ctx.selected_manual == 2 and a * backup.visual.manualenable or a12 * backup.visual.manualenable,
-			'+',
-			nil,
-			'⮞')
-			render.text(
-			g_ctx.selected_manual == 1 and g_ctx.screen[1] * .5 - le * .5 - 55 or g_ctx.screen[1] * .5 - le * .5 - 55, 
-			g_ctx.screen[2] * .5 - le + 2,
-			g_ctx.selected_manual == 1 and r or r12, 
-			g_ctx.selected_manual == 1 and g or g12, 
-			g_ctx.selected_manual == 1 and b or b12, 
-			g_ctx.selected_manual == 1 and a * backup.visual.manualenable or a12 * backup.visual.manualenable,
-			'+',
-			nil,
-			'⮜')
+			if def.values.yaw == nil then 
+				return 
+			end
+
+			local radius = 30
+			local real = def.values.yaw
+			local left_radius  = math.rad(real - 1)
+			local right_radius = math.rad(real + 1)
+			local center = vector(g_ctx.screen[1] / 2, g_ctx.screen[2] / 2)
+			local size = ui.get(gui.indicators.manualslider)
+			local sharpness = 4
+			local gap = math.rad(size * 2)
+
+			render.triangle(
+				center.x + (radius * math.sin(left_radius)), 
+				center.y + (radius * math.cos(left_radius)), 
+				center.x + (radius + size) * math.sin(left_radius),
+				center.y + (radius + size) * math.cos(left_radius), 
+				center.x + (radius - sharpness) * math.sin(left_radius - gap), 
+				center.y + (radius - sharpness) * math.cos(left_radius - gap),
+			r, g, b, a * backup.visual.manualenable)
+
+			render.triangle(
+				center.x + (radius * math.sin(right_radius)),
+				center.y + (radius * math.cos(right_radius)),
+				center.x + (radius + size) * math.sin(right_radius),
+				center.y + (radius + size) * math.cos(right_radius),
+				center.x + (radius - sharpness) * math.sin(right_radius + gap),
+				center.y + (radius - sharpness) * math.cos(right_radius + gap),
+			r12, g12, b12, a12 * backup.visual.manualenable)
+			ctx.crosshair_indicator.y = ctx.crosshair_indicator.y + 30
 		end,
 		esp_name = function()
 			local indicators = gui.indicators
-			--local enemies = entity.get_players(true)
-	
-			--for i, enemy in pairs(enemies) do
             for enemy = 1, globals.maxplayers() do
 				name = entity.get_player_name(enemy)
 				local x1, y1, x2, y2, a2 = entity.get_bounding_box(enemy)
-				local top = ''
-				if lua.ba and lua.sf then
-					top = 'ba & sp'
-				elseif lua.ba then
-				top = 'ba'
-				elseif lua.sf then
-					top = 'sp'
-				else
-					top = ''
-				end
-
 				if y1 ~= nil and x1 ~= nil then
 					local x_center = x1 + (x2 - x1) / 2
-					if ui.get(gui.indicators.basf) then
-						local opt = ''
-						if ui.get(indicators.basf_font) == 'Small' then
-							opt = 'c-'
-							top = top:upper()
-						elseif ui.get(indicators.basf_font) == 'Default' then
-							opt = 'c'
-						elseif ui.get(indicators.basf_font) == 'Bold' then
-							opt = 'cb'
-						end
-						r, g, b, a = ui.get(indicators.basf_color)
-						render.text(x_center, y1 - 17, r, g, b, a * a2, opt, nil, top)
-					end
 					if ui.get(gui.indicators.name) then
 						local opt = ''
 						if ui.get(indicators.name_font) == 'Small' then
@@ -2032,16 +2001,13 @@ do
 		end,
 		esp_info = function()
 			local indicators = gui.indicators
-		
 			if not ui.get(indicators.basf) then
 				return
 			end
-		
+
 			local font_type = ui.get(indicators.basf_font)
 			local r, g, b, a = ui.get(indicators.basf_color)
-		
 			local player_resource = entity.get_player_resource()
-		
 			local text_flags = ''
 			if font_type == 'Small' then
 				text_flags = 'c-'
@@ -2050,46 +2016,37 @@ do
 			elseif font_type == 'Bold' then
 				text_flags = 'cb'
 			end
-		
+
 			for player = 1, globals.maxplayers() do
 				local is_connected = entity.get_prop(
 					player_resource, 'm_bConnected', player
 				)
-		
 				local is_enemy = entity.is_enemy(player)
-		
 				if not is_connected or not is_enemy then
 					goto continue
 				end
-		
+
 				local x1, y1, x2, y2, alpha = entity.get_bounding_box(player)
-		
 				if x1 == nil or y1 == nil or alpha == 0.0 then
 					goto continue
 				end
-		
 				local center_x = x1 + (x2 - x1) * 0.5
 				local offset_y = y1 - 17
-		
+
 				local text = { }
-		
 				local body_aim_value = lua.esp_body_aim[player]
 				local safe_point_value = lua.esp_safe_point[player]
-		
 				if body_aim_value then
 					table.insert(text, 'ba')
 				end
-		
 				if safe_point_value then
 					table.insert(text, 'sp')
 				end
-		
 				text = table.concat(text, ' & ')
-		
 				if text == '' then
 					goto continue
 				end
-		
+
 				render.text(center_x, offset_y, r, g, b, a * alpha, text_flags, nil, font_type == 'Small' and text:upper() or text)
 				::continue::
 			end
@@ -2183,7 +2140,7 @@ do
 			end
 			return false
 	    end,
-		fix_doubletap = function()
+		fix_doubletap = function(cmd)
 			local tickcount = globals.tickcount()
 			local tickbase = entity.get_prop(g_ctx.lp, 'm_nTickBase')
 			local weapon = entity.get_player_weapon(g_ctx.lp)
@@ -2211,19 +2168,15 @@ do
 			end
 
 			if throwcheck then
-				if weaponi.weapon_type_int ~= 9 then
-					return
-				end
-
-				local on = throw > 0
-				ui.set(software.antiaim.other.fakeduck, on and 'Always on' or 'On hotkey')
+				local on = exploit and weaponi.weapon_type_int == 9 and throw > 110
+				cmd.discharge_pending = on
 			end
 
-			if checklagcomp then
-				local chk = def.values.ticks > 0 and not g_ctx.grtck
-				ui.set(software.antiaim.other.fakeduck, chk and 'Always on' or 'On hotkey')
+			if checklagcomp and not g_ctx.grtck then
+				local chk = def.corr:peeking() and def.values.ticks > 6
+				cmd.force_defensive = true
+				cmd.discharge_pending = chk
 			end
-			
 		end,
 		fix_defensive = function(cmd)
 			ctx.state = get_state()
@@ -2256,7 +2209,7 @@ do
 
 		local group = hitgroup_names[e.hitgroup + 1] or '?'
 		motion.push(string.format('Miss %s in %s due to %s in %d hitchance', entity.get_player_name(e.target), group, e.reason, math.floor(e.hit_chance + 0.5)), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-		client.color_log(r, g, b, string.format('Miss %s in %s due to %s in %d hitchance', entity.get_player_name(e.target), group, e.reason, math.floor(e.hit_chance + 0.5)))
+		events.color_log(r, g, b, string.format('Miss %s in %s due to %s in %d hitchance', entity.get_player_name(e.target), group, e.reason, math.floor(e.hit_chance + 0.5)))
 	end)
 
 	events.set_event_callback('aim_fire', function(e)
@@ -2279,7 +2232,7 @@ do
 	
 		local group = hitgroup_names[e.hitgroup + 1] or '?'
 		motion.push(string.format('Registered %s in %s for %d damage in %d hitchance and %d backtrack (%d ms) - %s', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), backtrack, events.real_latency(), table.concat(flags)), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-		client.color_log(r, g, b, string.format('Registered %s in %s for %d damage in %d hitchance and %d backtrack (%d ms) - %s', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), backtrack, events.real_latency(), table.concat(flags)))
+		events.color_log(r, g, b, string.format('Registered %s in %s for %d damage in %d hitchance and %d backtrack (%d ms) - %s', entity.get_player_name(e.target), group, e.damage,math.floor(e.hit_chance + 0.5), backtrack, events.real_latency(), table.concat(flags)))
 	end)
 
 	events.set_event_callback('aim_hit', function(e)
@@ -2291,14 +2244,14 @@ do
 
 		local group = hitgroup_names[e.hitgroup + 1] or '?'
 		motion.push(string.format('Hit %s in the %s for %d damage (%d health remaining)', entity.get_player_name(e.target), group, e.damage, entity.get_prop(e.target, 'm_iHealth')), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-		client.color_log(r, g, b, string.format('Hit %s in the %s for %d damage (%d health remaining)', entity.get_player_name(e.target), group, e.damage, entity.get_prop(e.target, 'm_iHealth')))
+		events.color_log(r, g, b, string.format('Hit %s in the %s for %d damage (%d health remaining)', entity.get_player_name(e.target), group, e.damage, entity.get_prop(e.target, 'm_iHealth')))
 
 	end)
 
 	local weapon_to_verb = { knife = 'Knifed', hegrenade = 'Naded', inferno = 'Burned' }
 
 	events.set_event_callback('player_hurt', function(e)
-		local attacker_id = client.userid_to_entindex(e.attacker)
+		local attacker_id = events.userid_to_entindex(e.attacker)
 			
 		if not ui.get(gui.menu.nadelogs) or attacker_id == nil or attacker_id ~= g_ctx.lp then
 			return
@@ -2308,14 +2261,14 @@ do
 		local r, g, b, a = ui.get(gui.menu.nadecolor)
 		
 		if group == 'generic' and weapon_to_verb[e.weapon] ~= nil then
-			local target_id = client.userid_to_entindex(e.userid)
+			local target_id = events.userid_to_entindex(e.userid)
 			local target_name = entity.get_player_name(target_id)
 			if target_id == g_ctx.lp then
 				return
 			end
 
 			motion.push(string.format('%s %s for %i damage (%i remaining)', weapon_to_verb[e.weapon], target_name, e.dmg_health, e.health), true, true, true, ui.get(gui.menu.cenlogs), r, g, b, a, ui.get(gui.menu.outputlogs))
-			client.color_log(r, g, b, string.format('%s %s for %i damage (%i remaining)', weapon_to_verb[e.weapon], target_name, e.dmg_health, e.health))
+			events.color_log(r, g, b, string.format('%s %s for %i damage (%i remaining)', weapon_to_verb[e.weapon], target_name, e.dmg_health, e.health))
 		end
 	end)
 
@@ -2324,7 +2277,7 @@ do
 			return
 		end
 		def.corr.fix_defensive(cmd)
-		def.corr.fix_doubletap()
+		def.corr.fix_doubletap(cmd)
 	end
 end
 
@@ -2357,18 +2310,22 @@ do
 	events.set_event_callback('paint_ui', gui.render)
 	events.set_event_callback('paint_ui', indicators.render)
 	events.set_event_callback('paint_ui', builder.render)
-	events.set_event_callback('net_update_end', body_safe)
 
-	events.set_event_callback('run_command', def.values.run)
 	events.set_event_callback('setup_command', builder.setup_createmove)
 	events.set_event_callback('setup_command', corrections.createmove)
 	events.set_event_callback('setup_command', lua.createmove)
+
+	events.set_event_callback('run_command', def.values.run)
 	events.set_event_callback('predict_command', def.values.predict)
+	events.set_event_callback('level_init', function() def.values.max_tickbase, def.values.ticks = 0, 0 end)
+
+	events.set_event_callback('net_update_end', def.values.net)
+	events.set_event_callback('net_update_end', body_safe)
+	
+	events.set_event_callback('pre_render', gui.animbuilder)
+
 	events.set_event_callback('shutdown', gui.shut)
 	events.set_event_callback('shutdown', lua.shutdown)
-	events.set_event_callback('net_update_end', def.values.net)
-	events.set_event_callback('level_init', function() def.values.max_tickbase, def.values.ticks = 0, 0 end)
-	events.set_event_callback('pre_render', gui.animbuilder)
 end
 
 --by qolhoz
@@ -2378,7 +2335,7 @@ do
         bool(__thiscall*)(void*, int msg_type, int nFlags, int size, const void* msg)
     ]]
 
-    local VClient018 = client.create_interface('client.dll', 'VClient018')
+    local VClient018 = events.create_interface('client.dll', 'VClient018')
     local pointer = ffi.cast('uintptr_t**', VClient018)
     local vtable = ffi.cast('uintptr_t*', pointer[0])
     local size = 0
@@ -2401,7 +2358,7 @@ do
         return oDispatch(thisptr, msg_type, nFlags, size, msg)
     end
 
-    client.set_event_callback('shutdown', function()
+    events.set_event_callback('shutdown', function()
         hooked_vtable[38] = vtable[38]
         pointer[0] = vtable
     end)
