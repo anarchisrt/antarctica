@@ -13,36 +13,12 @@ local events = client
 local ffi = require 'ffi'
 local vector = require 'vector'
 local entitys = require 'gamesense/entity'
+local clipboard = require 'gamesense/clipboard'
 local antiatims = require 'gamesense/antiaim_funcs'
 local weapons = require 'gamesense/csgo_weapons'
 
 local VGUI_System010 =  events.create_interface('vgui2.dll', 'VGUI_System010')
 local VGUI_System = ffi.cast(ffi.typeof('void***'), VGUI_System010)
-
-ffi.cdef [[
-	typedef int(__thiscall* get_clipboard_text_count)(void*);
-	typedef void(__thiscall* set_clipboard_text)(void*, const char*, int);
-	typedef void(__thiscall* get_clipboard_text)(void*, int, const char*, int);
-	]]
-
-	local get_clipboard_text_count = ffi.cast('get_clipboard_text_count', VGUI_System[0][7])
-	local set_clipboard_text = ffi.cast('set_clipboard_text', VGUI_System[0][9])
-	local get_clipboard_text = ffi.cast('get_clipboard_text', VGUI_System[0][11])
-
-	local clipboard_import = function()
-	  local clipboard_text_length = get_clipboard_text_count( VGUI_System )
-	local clipboard_data = ''
-
-	if clipboard_text_length > 0 then
-		buffer = ffi.new('char[?]', clipboard_text_length)
-		size = clipboard_text_length * ffi.sizeof('char[?]', clipboard_text_length)
-
-		get_clipboard_text( VGUI_System, 0, buffer, size )
-		clipboard_data = ffi.string( buffer, clipboard_text_length-1 )
-	end
-
-	return clipboard_data
-end
 
 local lua = {}
 lua.esp_body_aim = { }
@@ -232,7 +208,7 @@ do
 			end
 
 			if data[7] then
-				render.text(x + g_ctx.screen[1] * .5 - text_sizex * .5, y + g_ctx.screen[2] - 300 - offset, data[8], data[9], data[10], data[11] * (data[2]), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
+				render.text(x + g_ctx.screen.x * .5 - text_sizex * .5, y + g_ctx.screen.y - 300 - offset, data[8], data[9], data[10], data[11] * (data[2]), opt, nil, ui.get(gui.menu.logsfont) == 'Small' and text_log:upper() or text_log)
 			end
 			
 			if data[2] < .1 then table.remove(lua, idx) end
@@ -301,12 +277,12 @@ do
 		gui.menu.nadelogs = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Hurt logs')
 		gui.menu.nadecolor = ui.new_color_picker(gui.aa,gui.aaim,'Hurt logs color', 155, 215, 155)
 
-		gui.thirdperson = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Thirdperson distance', 30, 300, cvar.cam_idealdist:get_int(), true, '°')
-		gui.thirdperson_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Enable thirdperson animation')
-		gui.aspectratio = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Aspect ratio', 0, 300, 0, true, 'x', .01)
-		gui.fov = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Field of view', 1, 135, ui.get(software.visuals.effects.fov), true, '°')
-		gui.zoom = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Zoom field of view', 0, 90, 0, true, '°')
-		gui.zoom_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Enable zoom animation')
+		gui.menu.thirdperson = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Thirdperson distance', 30, 300, cvar.cam_idealdist:get_int(), true, '°')
+		gui.menu.thirdperson_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Enable thirdperson animation')
+		gui.menu.aspectratio = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Aspect ratio', 0, 300, 0, true, 'x', .01)
+		gui.menu.fov = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Field of view', 1, 135, ui.get(software.visuals.effects.fov), true, '°')
+		gui.menu.zoom = ui.new_slider(gui.aa, gui.abcd, gui.menuc..'Zoom field of view', 0, 90, 0, true, '°')
+		gui.menu.zoom_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Enable zoom animation')
 
 		ui.set_callback(gui.menu.lua, function()
 			cvar.play:invoke_callback(lua.sound)
@@ -339,10 +315,10 @@ do
 		ui.set_callback(gui.menu.grfl, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.thirdperson_on, function()
+		ui.set_callback(gui.menu.thirdperson_on, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.zoom_on, function()
+		ui.set_callback(gui.menu.zoom_on, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 		ui.set_callback(gui.menu.fixdt, function()
@@ -558,7 +534,7 @@ do
 	end
 
 	function gui.render()
-		local indicators = gui.indicators
+		local indicators = gui.menu
 		local luatabif = ui.get(gui.menu.lua) == 'Info'
 		local luatabaa = ui.get(gui.menu.lua) == 'Antiaim'
 		local luatabvis = ui.get(gui.menu.lua) == 'Visuals'
@@ -567,8 +543,8 @@ do
 		local indsd = ui.get(indicators.indicator)
 		local dmgind = ui.get(indicators.damage_indicator)
 		local logz = ui.get(gui.menu.outputlogs) == 'Lua'
-		local nameesp = ui.get(gui.indicators.name)
-		local basf = ui.get(gui.indicators.basf)
+		local nameesp = ui.get(gui.menu.name)
+		local basf = ui.get(gui.menu.basf)
 		local mayaw = ui.get(indicators.manual2arrows)
 		ui.set_visible(gui.menu.miscellaneous, luatabaa)
 		ui.set_visible(indicators.manual2arrows, luatabvis)
@@ -588,8 +564,8 @@ do
 		ui.set_visible(indicators.damage_indicator_font, luatabvis and dmgind)
 		ui.set_visible(indicators.watermark_style, luatabvis)
 		ui.set_visible(indicators.watermark_font, luatabvis)
-		ui.set_visible(gui.thirdperson, luatabvis)
-		ui.set_visible(gui.thirdperson_on, luatabvis)
+		ui.set_visible(gui.menu.thirdperson, luatabvis)
+		ui.set_visible(gui.menu.thirdperson_on, luatabvis)
 		ui.set_visible(gui.menu.hitlogs, luatabmisc)
 		ui.set_visible(gui.menu.reglogs, luatabmisc)
 		ui.set_visible(gui.menu.misslogs, luatabmisc)
@@ -601,13 +577,13 @@ do
 		ui.set_visible(gui.menu.outputlogs, luatabmisc)
 		ui.set_visible(gui.menu.nadelogs, luatabmisc)
 		ui.set_visible(gui.menu.nadecolor, luatabmisc)
-		ui.set_visible(gui.aspectratio, luatabvis)
-		ui.set_visible(gui.indicators.name, luatabvis)
-		ui.set_visible(gui.indicators.name_color, luatabvis and nameesp)
-		ui.set_visible(gui.indicators.name_font, luatabvis and nameesp)
-		ui.set_visible(gui.fov, luatabvis)
-		ui.set_visible(gui.zoom, luatabvis)
-		ui.set_visible(gui.zoom_on, luatabvis)
+		ui.set_visible(gui.menu.aspectratio, luatabvis)
+		ui.set_visible(gui.menu.name, luatabvis)
+		ui.set_visible(gui.menu.name_color, luatabvis and nameesp)
+		ui.set_visible(gui.menu.name_font, luatabvis and nameesp)
+		ui.set_visible(gui.menu.fov, luatabvis)
+		ui.set_visible(gui.menu.zoom, luatabvis)
+		ui.set_visible(gui.menu.zoom_on, luatabvis)
 		ui.set_visible(gui.menu.grfl, luatabmisc)
 		ui.set_visible(gui.menu.fixdt, luatabmisc)
 		ui.set_visible(gui.menu.info, luatabif)
@@ -627,11 +603,11 @@ do
 		ui.set_visible(gui.corrections.overbs_pl, constructor_pl and overbody)
 		ui.set_visible(gui.corrections.misses_pl, constructor_pl and overbody and gui.select(po_pl, 'After misses'))
 		ui.set_visible(gui.corrections.hp_pl, constructor_pl and overbody and gui.select(po_pl, 'HP'))
-		ui.set_visible(gui.indicators.basf, constructor_pl)
-		--ui.set_enabled(gui.indicators.basf, false)
-		--ui.set(gui.indicators.basf, false)
-		ui.set_visible(gui.indicators.basf_color, constructor_pl and basf)
-		ui.set_visible(gui.indicators.basf_font, constructor_pl and basf)
+		ui.set_visible(gui.menu.basf, constructor_pl)
+		--ui.set_enabled(gui.menu.basf, false)
+		--ui.set(gui.menu.basf, false)
+		ui.set_visible(gui.menu.basf_color, constructor_pl and basf)
+		ui.set_visible(gui.menu.basf_font, constructor_pl and basf)
 
 		local sfover = ui.get(gui.corrections.oversf_pl) ~= 'Off'
 		local sfpo_pl = ui.get(gui.corrections.oversfs_pl)
@@ -670,7 +646,7 @@ end
 do 
 	function g_ctx.render()
 		g_ctx.lp = entity.get_local_player()
-		g_ctx.screen = {events.screen_size()}
+		g_ctx.screen = vector(events.screen_size())
 	end
 end
 
@@ -683,7 +659,7 @@ do
 
 	body = function(animstate)
 		local yaw = animstate.eye_angles_y - animstate.goal_feet_yaw
-		yaw = motion.normalize_yaw(yaw)
+		yaw = motion.normalize_yaw(math.floor(yaw))
 		return yaw
 	end
 
@@ -779,7 +755,7 @@ do
 			
 			return exploit and def.values.ticks or 0
 		end,
-		net = function(cmd)
+		set = function(cmd)
 			if g_ctx.lp == nil then return end
 			local my_data = entitys(g_ctx.lp)
 			if my_data == nil then return end
@@ -789,10 +765,9 @@ do
 	
 			local chokedcommands = globals.chokedcommands()
 			if chokedcommands == 0 then
-				def.values.packets = def.values.packets + 1
-				def.values.choking = def.values.choking * -1
-				def.values.choking_bool = not def.values.choking_bool
+
 				def.values.body = body(animstate)
+				--print(def.values.body)
 			end
 			def.values.yaw = math.floor(angle_yaw())
 		end
@@ -813,50 +788,50 @@ do
 
 		ctx.amount = { [1] = 'Off', [15] = 'Max', [16] = 'Ext', [17] = 'Lag' }
 
-		gui.spinwhendead = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Spin when'.. gui.warning .. ' enemies' .. gui.menuc ..' dead')
-		gui.spinwhendeadspeed = ui.new_slider(gui.aa,gui.lag, gui.menuc..'Spin speed', 0, 60, 5, true, '°')
-		gui.antihead = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Anti back')
-		gui.ladder = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Fast ladder')
-		gui.fl_amount = ui.new_combobox(gui.aa, gui.aaim, gui.menuc..'Amount', 'Dynamic', 'Maximum', 'Fluctuate')
-		gui.fl_variance = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Variance', 0, 100, 0, true, '%')
-		gui.fl_limit = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Limit', 1, ui.get(software.rage.binds.usercmd), 15, true, 't', 1, ctx.amount)
-		gui.fl_break = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Break', 1, ui.get(software.rage.binds.usercmd), 0, true, 't', 1, ctx.amount)
-		gui.ot_leg = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Leg movement', 'Off', 'Never slide', 'Always slide')
-		gui.manual_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Manual enable')
-		gui.manual_left = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Left')
-		gui.manual_right = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Right')
-		gui.manual_back = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Back')
-		gui.manual_forward = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Forward')
-		gui.manual_reset = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Reset')
-		gui.airstop = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Airstop')
-		gui.airstopb = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Bind')
-		gui.freestand = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Freestand')
-		gui.hideshots = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Hideshots')
-		gui.export = ui.new_button(gui.aa, gui.lag, gui.menuc..'Export config anti-aim', function() def.antiaim:export_cfg() end)
-		gui.import = ui.new_button(gui.aa, gui.lag, gui.menuc..'Import config anti-aim', function() def.antiaim:import_cfg() end)
+		gui.menu.spinwhendead = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Spin when'.. gui.warning .. ' enemies' .. gui.menuc ..' dead')
+		gui.menu.spinwhendeadspeed = ui.new_slider(gui.aa,gui.lag, gui.menuc..'Spin speed', 0, 60, 5, true, '°')
+		gui.menu.antihead = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Anti back')
+		gui.menu.ladder = ui.new_checkbox(gui.aa,gui.lag, gui.menuc..'Fast ladder')
+		gui.menu.fl_amount = ui.new_combobox(gui.aa, gui.aaim, gui.menuc..'Amount', 'Dynamic', 'Maximum', 'Fluctuate')
+		gui.menu.fl_variance = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Variance', 0, 100, 0, true, '%')
+		gui.menu.fl_limit = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Limit', 1, ui.get(software.rage.binds.usercmd), 15, true, 't', 1, ctx.amount)
+		gui.menu.fl_break = ui.new_slider(gui.aa, gui.aaim, gui.menuc..'Break', 1, ui.get(software.rage.binds.usercmd), 0, true, 't', 1, ctx.amount)
+		gui.menu.ot_leg = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Leg movement', 'Off', 'Never slide', 'Always slide')
+		gui.menu.manual_on = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Manual enable')
+		gui.menu.manual_left = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Left')
+		gui.menu.manual_right = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Right')
+		gui.menu.manual_back = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Back')
+		gui.menu.manual_forward = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Forward')
+		gui.menu.manual_reset = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Reset')
+		gui.menu.airstop = ui.new_checkbox(gui.aa, gui.abcd, gui.menuc..'Airstop')
+		gui.menu.airstopb = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..' Bind')
+		gui.menu.freestand = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Freestand')
+		gui.menu.hideshots = ui.new_hotkey(gui.aa, gui.abcd, gui.menuc..'Hideshots')
+		gui.menu.exportaa = ui.new_button(gui.aa, gui.lag, gui.menuc..'Export config anti-aim', function() def.antiaim:export_cfgaa() end)
+		gui.menu.importaa = ui.new_button(gui.aa, gui.lag, gui.menuc..'Import config anti-aim', function() def.antiaim:import_cfgaa() end)
 
 		ui.set_callback(gui.conditions.state, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.ladder, function()
+		ui.set_callback(gui.menu.ladder, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.fl_amount, function()
+		ui.set_callback(gui.menu.fl_amount, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.antihead, function()
+		ui.set_callback(gui.menu.antihead, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.spinwhendead, function()
+		ui.set_callback(gui.menu.spinwhendead, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.ot_leg, function()
+		ui.set_callback(gui.menu.ot_leg, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.manual_on, function()
+		ui.set_callback(gui.menu.manual_on, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
-		ui.set_callback(gui.airstop, function()
+		ui.set_callback(gui.menu.airstop, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
 
@@ -888,7 +863,7 @@ do
 				defensive_on = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process'..gui.state, 'Off', 'Peek', 'Always'),
 				defensive_builder = ui.new_checkbox(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process builder'..gui.state),
 				defensive_pitch = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process pitch'..gui.state, -89, 89, 0, true, '°', 1, ctx.pitch),
-				defensive_yaw = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process yaw'..gui.state, 'Off', '1 Way', '2 Way', '3 Way', 'Hidden', 'Hidden V2', 'Hidden V3'),
+				defensive_yaw = ui.new_combobox(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process yaw'..gui.state, 'Off', '1 Way', '2 Way', '3 Way', 'Hidden', 'Random', 'Exploit (beta)'),
 				defensive_start = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process start'..gui.state, 0, 6, 0, true, 't', 1, ctx.tick1),
 				defensive_end = ui.new_slider(gui.aa,gui.abcd, gui.risk..gui.defensive..' Process end'..gui.state, 7, 14, 14, true, 't', 1, ctx.tick2),
 			}
@@ -937,31 +912,31 @@ do
 		local luatabaa = ui.get(gui.menu.lua) == 'Antiaim' and ui.get(gui.menu.miscellaneous) == 'Main'
 		local luatabaafl = ui.get(gui.menu.lua) == 'Antiaim' and ui.get(gui.menu.miscellaneous) == 'Other'
 		local luatabaaot = ui.get(gui.menu.lua) == 'Antiaim' and ui.get(gui.menu.miscellaneous) == 'Other'
-		local spins = ui.get(gui.spinwhendead)
-		local man = ui.get(gui.manual_on)
-		local airf = ui.get(gui.airstop)
+		local spins = ui.get(gui.menu.spinwhendead)
+		local man = ui.get(gui.menu.manual_on)
+		local airf = ui.get(gui.menu.airstop)
 
-		ui.set_visible(gui.fl_amount, luatabaafl)
-		ui.set_visible(gui.fl_break, luatabaafl)
-		ui.set_visible(gui.fl_variance, luatabaafl)
-		ui.set_visible(gui.fl_limit, luatabaafl)
-		ui.set_visible(gui.ot_leg, luatabaaot)
-		ui.set_visible(gui.manual_on, luatabaaot)
-		ui.set_visible(gui.manual_left, luatabaaot and man)
-		ui.set_visible(gui.manual_forward, luatabaaot and man)
-		ui.set_visible(gui.manual_back, luatabaaot and man)
-		ui.set_visible(gui.manual_reset, luatabaaot and man)
-		ui.set_visible(gui.antihead, luatabaaot)
-		ui.set_visible(gui.ladder, luatabaaot)
-		ui.set_visible(gui.manual_right, luatabaaot and man)
-		ui.set_visible(gui.freestand, luatabaaot)
-		ui.set_visible(gui.hideshots, luatabaaot)
-		ui.set_visible(gui.export, luatabaa)
-		ui.set_visible(gui.import, luatabaa)
-		ui.set_visible(gui.airstop, luatabaaot)
-		ui.set_visible(gui.airstopb, luatabaaot and airf)
-		ui.set_visible(gui.spinwhendead, luatabaaot)
-		ui.set_visible(gui.spinwhendeadspeed, luatabaaot and spins)
+		ui.set_visible(gui.menu.fl_amount, luatabaafl)
+		ui.set_visible(gui.menu.fl_break, luatabaafl)
+		ui.set_visible(gui.menu.fl_variance, luatabaafl)
+		ui.set_visible(gui.menu.fl_limit, luatabaafl)
+		ui.set_visible(gui.menu.ot_leg, luatabaaot)
+		ui.set_visible(gui.menu.manual_on, luatabaaot)
+		ui.set_visible(gui.menu.manual_left, luatabaaot and man)
+		ui.set_visible(gui.menu.manual_forward, luatabaaot and man)
+		ui.set_visible(gui.menu.manual_back, luatabaaot and man)
+		ui.set_visible(gui.menu.manual_reset, luatabaaot and man)
+		ui.set_visible(gui.menu.antihead, luatabaaot)
+		ui.set_visible(gui.menu.ladder, luatabaaot)
+		ui.set_visible(gui.menu.manual_right, luatabaaot and man)
+		ui.set_visible(gui.menu.freestand, luatabaaot)
+		ui.set_visible(gui.menu.hideshots, luatabaaot)
+		ui.set_visible(gui.menu.exportaa, luatabaa)
+		ui.set_visible(gui.menu.importaa, luatabaa)
+		ui.set_visible(gui.menu.airstop, luatabaaot)
+		ui.set_visible(gui.menu.airstopb, luatabaaot and airf)
+		ui.set_visible(gui.menu.spinwhendead, luatabaaot)
+		ui.set_visible(gui.menu.spinwhendeadspeed, luatabaaot and spins)
 	
 
 		for i, name in pairs(ctx.condition_names) do
@@ -1094,7 +1069,7 @@ do
 			return 'Manual Forward'
 		end
 
-		if ui.get(gui.freestand) and ui.get(gui.conditions['Freestand'].override) then
+		if ui.get(gui.menu.freestand) and ui.get(gui.conditions['Freestand'].override) then
 			return 'Freestand'
 		end
 		
@@ -1130,7 +1105,7 @@ do
 		ticks = 0,
 		--weapons = { 'Global', 'G3SG1 / SCAR-20', 'SSG 08', 'AWP', 'R8 Revolver', 'Desert Eagle', 'Pistol', 'Zeus', 'Rifle', 'Shotgun', 'SMG', 'Machine gun' },
 		off_while = function()
-			if not ui.get(gui.spinwhendead) then
+			if not ui.get(gui.menu.spinwhendead) then
 				return
 			end
 
@@ -1157,16 +1132,16 @@ do
 		end,
 		hideshot = function()
 			ui.set(software.rage.binds.on_shot_anti_aim[2], 'always on')
-			ui.set(software.rage.binds.on_shot_anti_aim[1], ui.get(gui.hideshots))
+			ui.set(software.rage.binds.on_shot_anti_aim[1], ui.get(gui.menu.hideshots))
 		end,
 		manual = function()
-			ui.set(gui.manual_left, 'On hotkey')
-			ui.set(gui.manual_right, 'On hotkey')
-			ui.set(gui.manual_back, 'On hotkey')
-			ui.set(gui.manual_forward, 'On hotkey')
-			ui.set(gui.manual_reset, 'On hotkey')
+			ui.set(gui.menu.manual_left, 'On hotkey')
+			ui.set(gui.menu.manual_right, 'On hotkey')
+			ui.set(gui.menu.manual_back, 'On hotkey')
+			ui.set(gui.menu.manual_forward, 'On hotkey')
+			ui.set(gui.menu.manual_reset, 'On hotkey')
 
-			if not ui.get(gui.manual_on) then
+			if not ui.get(gui.menu.manual_on) then
 				g_ctx.selected_manual = 0
 				return
 			end
@@ -1175,7 +1150,7 @@ do
 				g_ctx.selected_manual = 0
 			end
 
-			local left_pressed = ui.get(gui.manual_left)
+			local left_pressed = ui.get(gui.menu.manual_left)
 			if left_pressed and not g_ctx.left_pressed then
 				if g_ctx.selected_manual == 1 then
 					g_ctx.selected_manual = 0
@@ -1184,7 +1159,7 @@ do
 				end
 			end
 
-			local right_pressed = ui.get(gui.manual_right)
+			local right_pressed = ui.get(gui.menu.manual_right)
 			if right_pressed and not g_ctx.right_pressed then
 				if g_ctx.selected_manual == 2 then
 					g_ctx.selected_manual = 0
@@ -1193,7 +1168,7 @@ do
 				end
 			end
 
-			local back_pressed = ui.get(gui.manual_back)
+			local back_pressed = ui.get(gui.menu.manual_back)
 			if back_pressed and not g_ctx.back_pressed then
 				if g_ctx.selected_manual == 3 then
 					g_ctx.selected_manual = 0
@@ -1202,7 +1177,7 @@ do
 				end
 			end
 
-			local forward_pressed = ui.get(gui.manual_forward)
+			local forward_pressed = ui.get(gui.menu.manual_forward)
 			if forward_pressed and not g_ctx.forward_pressed then
 				if g_ctx.selected_manual == 4 then
 					g_ctx.selected_manual = 0
@@ -1211,7 +1186,7 @@ do
 				end
 			end
 
-			local reset_pressed = ui.get(gui.manual_reset)
+			local reset_pressed = ui.get(gui.menu.manual_reset)
 			if reset_pressed and not g_ctx.reset_pressed then
 				if g_ctx.selected_manual == 5 then
 					g_ctx.selected_manual = 5
@@ -1233,7 +1208,7 @@ do
 			end
 			local conditions = gui.conditions[ctx.state]
 
-			local fs = ui.get(gui.freestand)
+			local fs = ui.get(gui.menu.freestand)
 			if g_ctx.selected_manual ~= 0 then
 				fs = false
 			end
@@ -1289,22 +1264,28 @@ do
 			local yaw_modifier = ui.get(conditions.yaw_modifier)
 			local yawmodofs = ui.get(conditions.modifier_offset)
 			local checklr = ui.get(conditions.lr_yaw)
-			local inverted = def.values.body < 0
-			local yaw_value = checklr and (inverted and yawl or yawr) or 0
 			local yaw = ui.get(conditions.yaw)
 			local yaw_base = ui.get(conditions.yaw_base)
 			local distance, delta = def.antistab.target(g_ctx.lp)
 			local body_yaw_value = ui.get(conditions.desync_invert) and ui.get(conditions.desync_value) or -ui.get(conditions.desync_value)
-			local desync = ui.get(conditions.desync)
+			local desync = ''
+			local desync_custom = ui.get(conditions.desync)
 			local body_yaw_delay = delayedzv
 			local freestanding_body_yaw = false
+
+			local chokedcommands = globals.chokedcommands()
+			if chokedcommands == 0 then
+				def.values.packets = def.values.packets + 1
+				def.values.choking = def.values.choking * -1
+				def.values.choking_bool = not def.values.choking_bool
+			end
 			
 			local chokedcommands = globals.chokedcommands()
 			local delay = body_yaw_delay
 			local target = delay * 2
 			inverted = (def.values.packets % target) >= delay
 			local val = inverted and ui.get(conditions.desync_value) or -ui.get(conditions.desync_value)
-			--print(real)
+			local yaw_value = checklr and (inverted and yawl or yawr) or 0
 
 			if def.values.ticks > ui.get(conditions.defensive_start) and 
 				def.values.ticks < ui.get(conditions.defensive_end) and 
@@ -1316,13 +1297,6 @@ do
 					def.values.spin = def.values.spin + 25
 					if def.values.spin > 180 then
 						def.values.spin = -180
-					end
-				end
-
-				if def.values.ticks == 3 then
-					def.values.spinv2 = def.values.spinv2 + 40
-					if def.values.spinv2 > 180 then
-						def.values.spinv2 = -180
 					end
 				end
 
@@ -1338,9 +1312,9 @@ do
 					value = 180
 				elseif val == 'Hidden' then
 					value = def.values.spin
-				elseif val == 'Hidden V2' then
-					value = def.values.spinv2
-				elseif val == 'Hidden V3' then
+				elseif val == 'Random' then
+					value = events.random_int(-180, 180)
+				elseif val == 'Exploit (beta)' then
 					if def.values.ticks == 6 then
 						value = def.values.packets % 2 == 0 and 90 or -90
 					else
@@ -1349,7 +1323,7 @@ do
 					bob = def.values.ticks == 6 and 'opposite' or 'off'
 				end
 
-				ui.set(software.antiaim.angles.desync[1], val == 'Hidden V3' and bob or 'opposite')
+				ui.set(software.antiaim.angles.desync[1], val == 'Exploit (beta)' and bob or 'opposite')
 				ui.set(software.antiaim.angles.desync[2], 1)
 				ui.set(software.antiaim.angles.freestanding_body_yaw, true)
 				ui.set(software.antiaim.angles.yaw_base, 'at targets')
@@ -1358,11 +1332,11 @@ do
 			else
 				if def.antiaim:off_while() == 0 then
 					yaw = 'spin'
-					yaw_value = ui.get(gui.spinwhendeadspeed)
+					yaw_value = ui.get(gui.menu.spinwhendeadspeed)
 					yawmodofs = 0
 					yaw_base = 'local view'
 					desync = 'off'
-				elseif distance ~= nil and distance < 35000 and ui.get(gui.antihead) then
+				elseif distance ~= nil and distance < 35000 and ui.get(gui.menu.antihead) then
 					yaw = '180'
 					yaw_value = 180
 					yawmodofs = 0
@@ -1392,36 +1366,14 @@ do
 					yawmodofs = 0
 					yaw_base = 'local view'
 					desync = 'opposite'
-				elseif desync == 'Process' then
-					yaw = ui.get(conditions.yaw)
-					desync = 'static'
-					body_yaw_value = val
-				
-					if chokedcommands == 0 then
-						def.values.spin = def.values.spin + 25
-						if def.values.spin > 180 then
-							def.values.spin = -180
-						end
-					end
-				
-					if yaw_modifier == 'Center' then
-						yawmodofs = inverted and yawmodofs or -yawmodofs
-					elseif yaw_modifier == 'Offset' then
-						yawmodofs = inverted and yawmodofs or 0
-					elseif yaw_modifier == 'Original' then
-						yawmodofs = def.values.packets % 3 == 1 and yawmodofs or 
-									(def.values.packets % 3 == 2 and 0 or -yawmodofs)
-					elseif yaw_modifier == 'Hidden' then
-						yawmodofs = def.values.spin / 4
-					else
-						yawmodofs = 0
-					end
-				
-					if checklr then
-						yaw_value = inverted and yawr or yawl
-					end
 				else
 					yaw = ui.get(conditions.yaw)
+					desync = 'static'
+					if desync_custom == 'Process' then
+						body_yaw_value = val
+						
+					end
+
 					if checklr then
 						yaw_value = inverted and yawr or yawl
 					end
@@ -1473,32 +1425,27 @@ do
 			
 		end,
 		leg_movement = function()
-			local leg = ui.get(gui.ot_leg)
+			local leg = ui.get(gui.menu.ot_leg)
 			if def.antiaim:off_while() == 0 then
 				leg = 'off'
 			else			
-				leg = ui.get(gui.ot_leg)
+				leg = ui.get(gui.menu.ot_leg)
 			end
 
 			ui.set(software.antiaim.other.leg_movement, leg)
 		end,
 		fakelag = function()
-			ui.set( software.antiaim.fakelag.amount, ui.get( gui.fl_amount ))
-			ui.set( software.antiaim.fakelag.variance, ui.get( gui.fl_variance ))
+			ui.set( software.antiaim.fakelag.amount, ui.get( gui.menu.fl_amount ))
+			ui.set( software.antiaim.fakelag.variance, ui.get( gui.menu.fl_variance ))
 			if def.antiaim:off_while() == 0 then
 				ui.set( software.antiaim.fakelag.limit, 1 )
-			elseif ui.get(gui.fl_break) > 1 then
-				ui.set( software.antiaim.fakelag.limit,	events.random_int(ui.get( gui.fl_break ), ui.get( gui.fl_limit )))
+			elseif ui.get(gui.menu.fl_break) > 1 then
+				ui.set( software.antiaim.fakelag.limit,	events.random_int(ui.get( gui.menu.fl_break ), ui.get( gui.menu.fl_limit )))
 			else
-				ui.set( software.antiaim.fakelag.limit,	ui.get( gui.fl_limit ))
+				ui.set( software.antiaim.fakelag.limit,	ui.get( gui.menu.fl_limit ))
 			end
 		end,
-		clipboard_export = function(string)
-			if string then
-				set_clipboard_text(VGUI_System, string, #string)
-			end
-		end,
-		export_cfg = function()
+		export_cfgaa = function()
 			local settings = {}
 			pcall(function()
 				for key, value in pairs(gui.conditions) do
@@ -1515,16 +1462,16 @@ do
 					end
 				end
 		
-				def.antiaim.clipboard_export(json.stringify(settings))
+				clipboard.set(json.stringify(settings))
 				motion.push('Export to buffer', true, true, true, ui.get(gui.menu.cenlogs), 215, 215, 215, 215, ui.get(gui.menu.outputlogs))
 				events.log('Export to buffer')
 				cvar.play:invoke_callback('ui/csgo_ui_contract_type1')
 			end)
 		end,
-		import_cfg = function()
+		import_cfgaa = function()
 			pcall(function()
 				local num_tbl = {}
-				local settings = json.parse(clipboard_import())
+				local settings = json.parse(clipboard.get())
 		
 				for key, value in pairs(settings) do
 					if type(value) == 'table' then
@@ -1547,8 +1494,8 @@ do
 			end)
 		end,
 		airstop = function(cmd)	
-			if ui.get(gui.airstop) then
-				if ui.get(gui.airstopb) then
+			if ui.get(gui.menu.airstop) then
+				if ui.get(gui.menu.airstopb) then
 					if cmd.quick_stop then
 						if not g_ctx.grtck then
 							cmd.in_speed = 1
@@ -1559,7 +1506,7 @@ do
 			end
 		end,
 		fast_ladder = function(cmd)
-			if not ui.get(gui.ladder) then
+			if not ui.get(gui.menu.ladder) then
 				return
 			end
 			local pitch,yaw = events.camera_angles()
@@ -1627,7 +1574,6 @@ do
 		end
 		def.antiaim:enable(cmd)
 		def.antiaim:hideshot()
-		def.antiaim:manual()
 		def.antiaim:freestand()
 		def.antiaim:pitch()
 		def.antiaim.desync_and_yaw(cmd)
@@ -1637,6 +1583,13 @@ do
 		def.antiaim:fakelag()
 		def.antiaim.fast_ladder(cmd)
 		def.antiaim.airstop(cmd)
+	end
+
+	function builder.pre_render(cmd)
+		if not entity.is_alive(g_ctx.lp) then
+			return
+		end
+		def.antiaim:manual()
 	end
 end
 
@@ -1659,8 +1612,12 @@ do
 		ctx.crosshair_indicator.binds[#ctx.crosshair_indicator.binds + 1] = { name = string.sub(name, 1, 2), full_name = name, ref = ref, color = disabled_color, enabled_color = enabled_color, disabled_color = disabled_color, chars = 0, alpha = 0, gradient_progress = 0, gradient_fn = gradient_fn }
 	end
 
+	ctx.indicators_table = {}
+	client.set_event_callback('indicator', function(indicator)
+		ctx.indicators_table[#ctx.indicators_table + 1] = indicator
+	end)
+
 	function indicators.init()
-		gui.indicators = {}
 		gui.aspectr = 0
 		gui.cur_state = 0
 		gui.doubletap = ''
@@ -1693,31 +1650,31 @@ do
 			y = 0,
 			z = 0,
 		}
-		gui.indicators.indicator_color = ui.new_color_picker(gui.aa,gui.aaim,'Indicator color', 215, 215, 215)
-		gui.indicators.indicator = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Indicator')
-		gui.indicators.indicator_anim = ui.new_multiselect(gui.aa, gui.aaim, 'Animation \n Indicator', 'On nade', 'On scope', 'On resume')
-		gui.indicators.indicator_font = ui.new_combobox(gui.aa, gui.aaim, '\n Indicator font', 'Small', 'Default', 'Bold')
-		gui.indicators.indicator_slider = ui.new_slider(gui.aa, gui.aaim, 'Binds offset \n Indicator', 10, 20, 11, true, 'ofs')
-		gui.indicators.indicator_slider2 = ui.new_slider(gui.aa, gui.aaim, 'Offset \n Indicator', 0, 200, 10, true, 'ofs')
-		gui.indicators.damage_indicator = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Damage indicator')
-		gui.indicators.damage_indicator_color = ui.new_color_picker(gui.aa,gui.aaim,'Damage indicator color', 215, 215, 215)
-		gui.indicators.damage_indicator_font = ui.new_combobox(gui.aa, gui.aaim, '\n Damage font', 'Small', 'Default', 'Bold')
-		gui.indicators.watermark_style = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Watermark style', 'Old', 'New')
-		gui.indicators.wmaincolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark main color', 215, 215, 215)
-		gui.indicators.wbackcolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark back color', 111, 111, 215)
-		gui.indicators.watermark_font = ui.new_combobox(gui.aa, gui.lag, '\n Watermark font', 'Small', 'Default', 'Bold')
-		gui.indicators.manual2arrows = ui.new_checkbox(gui.aa,gui.aaim,gui.menuc..'Yaw arrow')
-		gui.indicators.manualslider = ui.new_slider(gui.aa, gui.aaim, 'Yaw arrow size', 10, 20, 11, true, 'sz')
-		gui.indicators.maincolor = ui.new_color_picker(gui.aa,gui.aaim,'Yaw arrow main color', 215, 215, 215)
-		gui.indicators.backcolor = ui.new_color_picker(gui.aa,gui.aaim,'Yaw arrow back color', 111, 111, 215)
-		gui.indicators.name = ui.new_checkbox(gui.aa, gui.lag, gui.menuc..'Name esp')
-		gui.indicators.name_color = ui.new_color_picker(gui.aa,gui.lag,'Name color', ui.get(software.visuals.effects.name[2]))
-		gui.indicators.name_font = ui.new_combobox(gui.aa, gui.lag, '\n Name font', 'Small', 'Default', 'Bold')
-		gui.indicators.basf = ui.new_checkbox(gui.aa, gui.lag, gui.menuc..'Esp information')
-		gui.indicators.basf_color = ui.new_color_picker(gui.aa,gui.lag,'Esp information color', 215, 215, 215)
-		gui.indicators.basf_font = ui.new_combobox(gui.aa, gui.lag, '\n Esp information font', 'Small', 'Default', 'Bold')
+		gui.menu.indicator_color = ui.new_color_picker(gui.aa,gui.aaim,'Indicator color', 215, 215, 215)
+		gui.menu.indicator = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Indicator')
+		gui.menu.indicator_anim = ui.new_multiselect(gui.aa, gui.aaim, 'Animation \n Indicator', 'On nade', 'On scope', 'On resume')
+		gui.menu.indicator_font = ui.new_combobox(gui.aa, gui.aaim, '\n Indicator font', 'Small', 'Default', 'Bold')
+		gui.menu.indicator_slider = ui.new_slider(gui.aa, gui.aaim, 'Binds offset \n Indicator', 10, 20, 11, true, 'ofs')
+		gui.menu.indicator_slider2 = ui.new_slider(gui.aa, gui.aaim, 'Offset \n Indicator', 0, 200, 10, true, 'ofs')
+		gui.menu.damage_indicator = ui.new_checkbox(gui.aa, gui.aaim, gui.menuc..'Damage indicator')
+		gui.menu.damage_indicator_color = ui.new_color_picker(gui.aa,gui.aaim,'Damage indicator color', 215, 215, 215)
+		gui.menu.damage_indicator_font = ui.new_combobox(gui.aa, gui.aaim, '\n Damage font', 'Small', 'Default', 'Bold')
+		gui.menu.watermark_style = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Watermark style', 'Old', 'New')
+		gui.menu.wmaincolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark main color', 215, 215, 215)
+		gui.menu.wbackcolor = ui.new_color_picker(gui.aa,gui.lag,'Watermark back color', 111, 111, 215)
+		gui.menu.watermark_font = ui.new_combobox(gui.aa, gui.lag, '\n Watermark font', 'Small', 'Default', 'Bold')
+		gui.menu.manual2arrows = ui.new_checkbox(gui.aa,gui.aaim,gui.menuc..'Yaw arrow')
+		gui.menu.manualslider = ui.new_slider(gui.aa, gui.aaim, 'Yaw arrow size', 10, 20, 11, true, 'sz')
+		gui.menu.maincolor = ui.new_color_picker(gui.aa,gui.aaim,'Yaw arrow main color', 215, 215, 215)
+		gui.menu.backcolor = ui.new_color_picker(gui.aa,gui.aaim,'Yaw arrow back color', 111, 111, 215)
+		gui.menu.name = ui.new_checkbox(gui.aa, gui.lag, gui.menuc..'Name esp')
+		gui.menu.name_color = ui.new_color_picker(gui.aa,gui.lag,'Name color', ui.get(software.visuals.effects.name[2]))
+		gui.menu.name_font = ui.new_combobox(gui.aa, gui.lag, '\n Name font', 'Small', 'Default', 'Bold')
+		gui.menu.basf = ui.new_checkbox(gui.aa, gui.lag, gui.menuc..'Esp information')
+		gui.menu.basf_color = ui.new_color_picker(gui.aa,gui.lag,'Esp information color', 215, 215, 215)
+		gui.menu.basf_font = ui.new_combobox(gui.aa, gui.lag, '\n Esp information font', 'Small', 'Default', 'Bold')
 
-		local indicators = gui.indicators
+		local indicators = gui.menu
 		ui.set_callback(indicators.indicator, function()
 			cvar.play:invoke_callback(lua.sound)
 		end, true)
@@ -1763,7 +1720,7 @@ do
 	end
 
 	add_crosshair_text = function(x, y, r, g, b, a, fl, opt, text, alpha)
-		local indicators = gui.indicators
+		local indicators = gui.menu
 		if alpha == nil then
 			alpha = 1
 		end
@@ -1780,7 +1737,7 @@ do
 		local text_size = render.measure_text(fl, text)
 		x = x - text_size * offset * .5 + 20 * ctx.crosshair_indicator.scope
 
-		local yawadd = 30 * backup.visual.manualenable + ui.get(gui.indicators.indicator_slider2)
+		local yawadd = 30 * backup.visual.manualenable + ui.get(gui.menu.indicator_slider2)
 		y = y + yawadd
 		
 		render.text(x, y, r, g, b, a, fl, opt, text)
@@ -1791,7 +1748,7 @@ do
 	def.visuals = {
 		interlerpfuncs = function()
 			backup.visual = {}
-			local indicators = gui.indicators
+			local indicators = gui.menu
 			local grenade = false
 			local weapon = entity.get_player_weapon(g_ctx.lp)
 			if weapon ~= nil then
@@ -1810,7 +1767,7 @@ do
 			ctx.anims.t = motion.interp(ctx.anims.t, ui.get(software.rage.binds.minimum_damage_override[2]), 0.1)
 			
 			local state = render.measure_text('d', get_state())
-			local asp = ui.get(gui.aspectratio)
+			local asp = ui.get(gui.menu.aspectratio)
 			ctx.anims.z = motion.interp(ctx.anims.z, state == gui.cur_state and ui.get(indicators.indicator), 0.1)
 			ctx.anims.k = motion.interp(ctx.anims.k, ui.get(indicators.indicator), 0.01)
 			ctx.anims.s = motion.interp(ctx.anims.s, asp == gui.aspectr, 0.01)
@@ -1819,20 +1776,20 @@ do
 				gui.aspectr = asp
 			end
 		
-			backup.visual.fov = ui.get(gui.zoom_on) and ctx.anims.p or entity.get_prop(g_ctx.lp, 'm_bIsScoped') * 1
+			backup.visual.fov = ui.get(gui.menu.zoom_on) and ctx.anims.p or entity.get_prop(g_ctx.lp, 'm_bIsScoped') * 1
 			backup.visual.state = ctx.anims.z or 1
 			backup.visual.ind = ctx.anims.k or 0
 			backup.visual.scoped = ctx.anims.c + ctx.anims.n + ctx.anims.l or 0
-			backup.visual.thirdperson = ui.get(gui.thirdperson_on) and ctx.anims.d or 1
+			backup.visual.thirdperson = ui.get(gui.menu.thirdperson_on) and ctx.anims.d or 1
 			backup.visual.aspectratio = gui.aspectr or 1
 			cvar.r_aspectratio:set_float(backup.visual.aspectratio * 0.01)
 			backup.visual.manualenable = ctx.anims.e or (ui.get(indicators.manual2arrows) and 1 or 0)
 		
-			ui.set(software.visuals.effects.fov, ui.get(gui.fov) - ui.get(gui.zoom) * backup.visual.fov)
+			ui.set(software.visuals.effects.fov, ui.get(gui.menu.fov) - ui.get(gui.menu.zoom) * backup.visual.fov)
 			ui.set(software.visuals.effects.zfov, 0)
 		
 			if entity.is_alive(g_ctx.lp) then
-				cvar.cam_idealdist:set_float(ui.get(gui.thirdperson) * backup.visual.thirdperson)
+				cvar.cam_idealdist:set_float(ui.get(gui.menu.thirdperson) * backup.visual.thirdperson)
 			end
 		
 			if ctx.anims.z < 0.1 then
@@ -1842,7 +1799,7 @@ do
 		end,
 		indicator = function()
 			ctx.crosshair_indicator.y = 15
-			local indicators = gui.indicators
+			local indicators = gui.menu
 			ctx.crosshair_indicator.scope = backup.visual.scoped
 			for index, bind in ipairs(ctx.crosshair_indicator.binds) do
 				local alpha = motion.interp(bind.alpha, ui.get(indicators.indicator) and ui.get(bind.ref), 0.07)
@@ -1889,7 +1846,7 @@ do
 					}
 				end
 
-				add_crosshair_text(g_ctx.screen[1] * .5, g_ctx.screen[2] * .5 + ctx.crosshair_indicator.y, clr[1], clr[2], clr[3], clr[4], opt, 0, text, alphaz)
+				add_crosshair_text(g_ctx.screen.x * .5, g_ctx.screen.y * .5 + ctx.crosshair_indicator.y, clr[1], clr[2], clr[3], clr[4], opt, 0, text, alphaz)
 				ctx.crosshair_indicator.binds[index].alpha = alphaz
 				ctx.crosshair_indicator.binds[index].name = name
 				ctx.crosshair_indicator.binds[index].chars = chars
@@ -1897,7 +1854,7 @@ do
 			end
 		end,
 		watermark = function()
-			local indicators = gui.indicators
+			local indicators = gui.menu
 			local opt = ''
 			if ui.get(indicators.watermark_font) == 'Small' then
 				opt = '-'
@@ -1910,20 +1867,20 @@ do
 				local r, g, b, a = ui.get(indicators.wmaincolor)
 				local name = 'antarctica recode'
 				local text_size = render.measure_text(opt, ui.get(indicators.watermark_font) == 'Small' and name:upper() or name)
-				render.text(g_ctx.screen[1] * .5 - text_size * .5, g_ctx.screen[2] - 15, r, g, b, 215, opt, nil, ui.get(indicators.watermark_font) == 'Small' and name:upper() or name)
+				render.text(g_ctx.screen.x * .5 - text_size * .5, g_ctx.screen.y - 15, r, g, b, 215, opt, nil, ui.get(indicators.watermark_font) == 'Small' and name:upper() or name)
 		    else
 				local version = 'v2 release'
 				local name = 'antarctica'
 				local version_size = render.measure_text(opt, version:upper())
 				local text_size = render.measure_text(opt, name:upper())
-				render.text(g_ctx.screen[1] * .5 - version_size * .5, g_ctx.screen[2] - 30, 215, 215, 215, 255, opt, nil, 
+				render.text(g_ctx.screen.x * .5 - version_size * .5, g_ctx.screen.y - 30, 215, 215, 215, 255, opt, nil, 
 				def.gui.text(indicators.wbackcolor, indicators.wmaincolor, version:upper(), 2))
-				render.text(g_ctx.screen[1] * .5 - text_size * .5, g_ctx.screen[2] - 15, 215, 215, 215, 255, opt, nil, 
+				render.text(g_ctx.screen.x * .5 - text_size * .5, g_ctx.screen.y - 15, 215, 215, 215, 255, opt, nil, 
 				def.gui.text(indicators.wbackcolor, indicators.wmaincolor, name:upper(), 2))
 		    end
 		end,
 		damage_indicator = function()
-			local indicators = gui.indicators
+			local indicators = gui.menu
 			if not ui.get(indicators.damage_indicator) then
 				return
 			end
@@ -1937,10 +1894,10 @@ do
 				opt = 'b'
 			end
 			local dmg = math.floor(ui.get(software.rage.binds.minimum_damage_override[3]))
-			render.text(g_ctx.screen[1] * .5 + 5, g_ctx.screen[2] * .5 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, dmg) 
+			render.text(g_ctx.screen.x * .5 + 5, g_ctx.screen.y * .5 - 15, r, g, b, 255 * ctx.anims.t, opt, nil, dmg) 
 		end,
 		manual_arrows = function()
-			local indicators = gui.indicators
+			local indicators = gui.menu
 			local r, g, b, a = ui.get(indicators.maincolor)
 			local r12, g12, b12, a12 = ui.get(indicators.backcolor)
 
@@ -1952,8 +1909,8 @@ do
 			local real = def.values.yaw
 			local left_radius  = math.rad(real - 1)
 			local right_radius = math.rad(real + 1)
-			local center = vector(g_ctx.screen[1] / 2, g_ctx.screen[2] / 2)
-			local size = ui.get(gui.indicators.manualslider)
+			local center = vector(g_ctx.screen.x / 2, g_ctx.screen.y / 2)
+			local size = ui.get(gui.menu.manualslider)
 			local sharpness = 4
 			local gap = math.rad(size * 2)
 
@@ -1977,13 +1934,13 @@ do
 			ctx.crosshair_indicator.y = ctx.crosshair_indicator.y + 30
 		end,
 		esp_name = function()
-			local indicators = gui.indicators
+			local indicators = gui.menu
             for enemy = 1, globals.maxplayers() do
 				name = entity.get_player_name(enemy)
 				local x1, y1, x2, y2, a2 = entity.get_bounding_box(enemy)
 				if y1 ~= nil and x1 ~= nil then
 					local x_center = x1 + (x2 - x1) / 2
-					if ui.get(gui.indicators.name) then
+					if ui.get(gui.menu.name) then
 						local opt = ''
 						if ui.get(indicators.name_font) == 'Small' then
 							opt = 'c-'
@@ -2000,7 +1957,7 @@ do
 			end
 		end,
 		esp_info = function()
-			local indicators = gui.indicators
+			local indicators = gui.menu
 			if not ui.get(indicators.basf) then
 				return
 			end
@@ -2051,9 +2008,35 @@ do
 				::continue::
 			end
 		end,
-		indictor_call = function()
-			if ui.get(gui.airstop) then
-				if ui.get(gui.airstopb) then
+		indicator_draw = function()
+			local h = g_ctx.screen.y
+			local starting = h - 350
+			
+			for index, indicator in pairs(ctx.indicators_table) do index = index - 1
+				if indicator.text == 'DT' then
+					indicator.r = def.values.ticks > 3 and def.values.ticks < 11 and 155 or indicator.r
+					indicator.g = def.values.ticks > 3 and def.values.ticks < 11 and 230 or indicator.g
+					indicator.b = def.values.ticks > 3 and def.values.ticks < 11 and 55 or indicator.b
+				end
+	
+				local width, height = render.measure_text('d+', indicator.text)
+				local offset = index * (height + 12)
+			
+				local width_ind = math.floor(width / 2)
+			
+				local y = starting - offset
+			
+				render.gradient(4, y, width_ind + 24, height + 4, 0, 0, 0, 0, 0, 0, 0, 50, true)
+				render.gradient(28 + width_ind, y, 29 + width_ind, height + 4, 0, 0, 0, 50, 0, 0, 0, 0, true)
+			
+				render.text(28, y + 2, indicator.r, indicator.g, indicator.b, indicator.a, 'd+', 0, indicator.text)
+			end
+			
+			ctx.indicators_table = {}
+		end,
+		indicator_call = function()
+			if ui.get(gui.menu.airstop) then
+				if ui.get(gui.menu.airstopb) then
 					render.indicator(230, 230, 230, 230, 'AS')
 				end
 			end
@@ -2073,7 +2056,8 @@ do
 		def.visuals:manual_arrows()
 		def.visuals:watermark()
 		def.visuals:damage_indicator()
-		def.visuals:indictor_call()
+		def.visuals:indicator_draw()
+		def.visuals:indicator_call()
 	end
 end
 
@@ -2151,8 +2135,8 @@ do
 			local exploit = tickcount > tickbase
 			local checkfixdt = ui.get(software.rage.binds.double_tap[1]) and ui.get(software.rage.binds.double_tap[2]) 
 			and m_flNextPrimaryAttack < globals.curtime() - 0.2 and not g_ctx.grtck and gui.select(ui.get(gui.menu.fixdt), 'Doubletap fix') 
-			local checklagcomp = gui.select(ui.get(gui.menu.fixdt), 'Break lag compensation') and not ui.get(gui.airstopb)
-			local checkchargel = gui.select(ui.get(gui.menu.fixdt), 'Charge lag') and not ui.get(gui.airstopb)
+			local checklagcomp = gui.select(ui.get(gui.menu.fixdt), 'Break lag compensation') and not ui.get(gui.menu.airstopb)
+			local checkchargel = gui.select(ui.get(gui.menu.fixdt), 'Charge lag') and not ui.get(gui.menu.airstopb)
 			local throwcheck = gui.select(ui.get(gui.menu.fixdt), 'Throw teleport')
 
 			if checkfixdt then
@@ -2292,9 +2276,9 @@ do
 		cvar.sv_maxusrcmdprocessticks:set_int(16)
 		ui.set(software.rage.binds.usercmd, 16)
 		cvar.cl_showerror:set_int(1)
-		cvar.cam_idealdist:set_float(ui.get(gui.thirdperson))
+		cvar.cam_idealdist:set_float(ui.get(gui.menu.thirdperson))
 		cvar.r_aspectratio:set_float(0.0)
-		ui.set(software.visuals.effects.fov, ui.get(gui.fov))
+		ui.set(software.visuals.effects.fov, ui.get(gui.menu.fov))
 	end
 end
 
@@ -2319,10 +2303,11 @@ do
 	events.set_event_callback('predict_command', def.values.predict)
 	events.set_event_callback('level_init', function() def.values.max_tickbase, def.values.ticks = 0, 0 end)
 
-	events.set_event_callback('net_update_end', def.values.net)
+	events.set_event_callback('setup_command', def.values.set)
 	events.set_event_callback('net_update_end', body_safe)
 	
 	events.set_event_callback('pre_render', gui.animbuilder)
+	events.set_event_callback('pre_render', builder.pre_render)
 
 	events.set_event_callback('shutdown', gui.shut)
 	events.set_event_callback('shutdown', lua.shutdown)
