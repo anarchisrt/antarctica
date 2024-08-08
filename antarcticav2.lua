@@ -239,7 +239,7 @@ do
 		
 		gui.menu.lua = ui.new_combobox(gui.aa, gui.lag, gui.menuc..'Antarctica' ..gui.color..' Recode', 'Info', 'Antiaim', 'Visuals', 'Misc', 'Helps')
 		gui.menu.info = ui.new_label(gui.aa, gui.lag, 'Welcome to the antarctica.lua!')
-		gui.menu.info2 = ui.new_label(gui.aa, gui.lag, 'Build date: 06.08.2024 3:00 [UTC+3]')
+		gui.menu.info2 = ui.new_label(gui.aa, gui.lag, 'Build date: 08.08.2024 3:13 [UTC+3]')
 		gui.menu.info3 = ui.new_button(gui.aa, gui.lag, 'Join us!', function() end)
 		gui.menu.miscellaneous = ui.new_combobox(gui.aa, gui.lag, '\n', 'Main', 'Other')
 
